@@ -1,44 +1,60 @@
 # OS / Editor
 .DS_Store
 Thumbs.db
+Desktop.ini
 *.swp
 *.swo
 *~
 .vscode/
 .idea/
+.fleet/
 
 # Python
 __pycache__/
 *.py[cod]
+*.pyd
 *.pyo
-*.egg-info/
-dist/
-build/
+*.so
 *.egg
+*.egg-info/
 .eggs/
-venv/
+build/
+dist/
+site/
+.python-version
 .venv/
-*.whl
+venv/
+env/
 
-# Environment
-.env
-.env.local
-
-# Testing
+# Python tooling caches
 .pytest_cache/
-htmlcov/
-.coverage
-coverage.xml
-
-# Mypy
 .mypy_cache/
-
-# Ruff
 .ruff_cache/
+.nox/
+.tox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Environment files
+.env
+.env.*
+!.env.example
 
 # Node / TypeScript (Office.js adapter)
+node_modules/
 adapters/officejs/node_modules/
 adapters/officejs/dist/
+*.tsbuildinfo
 
-# LibreOffice lock files
+# LibreOffice / Calc
 .~lock.*
+*.tmp
+*.bak
+*.~*
+
+# Logs and local runtime files
+*.log
+*.pid
+*.pid.lock
