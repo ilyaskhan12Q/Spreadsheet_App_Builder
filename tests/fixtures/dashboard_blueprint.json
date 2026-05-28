@@ -1,0 +1,431 @@
+{
+  "meta": {
+    "app_type": "dashboard",
+    "title": "Executive KPI Dashboard",
+    "description": "Interactive dashboard with KPI cards, sales transaction table, and chart placeholder.",
+    "author": "SAB Dashboard Agent",
+    "version": "1.0.0",
+    "frozen_rows": 1,
+    "frozen_cols": 0,
+    "hide_gridlines": true,
+    "col_widths": {
+      "A": 12.0,
+      "B": 15.0,
+      "C": 12.0,
+      "D": 12.0,
+      "E": 15.0,
+      "F": 4.0,
+      "G": 15.0,
+      "H": 15.0,
+      "I": 15.0,
+      "J": 15.0,
+      "K": 15.0
+    },
+    "row_heights": {
+      "1": 30.0,
+      "2": 18.0,
+      "3": 28.0,
+      "5": 20.0,
+      "6": 22.0
+    }
+  },
+  "regions": [
+    {
+      "region_id": "dashboard_header",
+      "type": "header",
+      "anchor": "A1",
+      "size": [1, 11],
+      "title": "Main Title",
+      "cell_ids": ["A1", "B1", "C1", "D1", "E1", "F1", "G1", "H1", "I1", "J1", "K1"]
+    },
+    {
+      "region_id": "kpi_card_1",
+      "type": "kpi_card",
+      "anchor": "A2",
+      "size": [2, 2],
+      "title": "KPI 1",
+      "cell_ids": ["A2", "B2", "A3", "B3"]
+    },
+    {
+      "region_id": "kpi_card_2",
+      "type": "kpi_card",
+      "anchor": "C2",
+      "size": [2, 2],
+      "title": "KPI 2",
+      "cell_ids": ["C2", "D2", "C3", "D3"]
+    },
+    {
+      "region_id": "kpi_card_3",
+      "type": "kpi_card",
+      "anchor": "G2",
+      "size": [2, 2],
+      "title": "KPI 3",
+      "cell_ids": ["G2", "H2", "G3", "H3"]
+    },
+    {
+      "region_id": "kpi_card_4",
+      "type": "kpi_card",
+      "anchor": "I2",
+      "size": [2, 2],
+      "title": "KPI 4",
+      "cell_ids": ["I2", "J2", "I3", "J3"]
+    },
+    {
+      "region_id": "sales_data_table",
+      "type": "data_table",
+      "anchor": "A6",
+      "size": [6, 5],
+      "title": "Recent Sales Transactions",
+      "cell_ids": [
+        "A6", "B6", "C6", "D6", "E6",
+        "A7", "B7", "C7", "D7", "E7",
+        "A8", "B8", "C8", "D8", "E8",
+        "A9", "B9", "C9", "D9", "E9",
+        "A10", "B10", "C10", "D10", "E10",
+        "A11", "B11", "C11", "D11", "E11"
+      ]
+    },
+    {
+      "region_id": "chart_region",
+      "type": "chart_placeholder",
+      "anchor": "G6",
+      "size": [6, 5],
+      "title": "Chart Visualizer",
+      "cell_ids": [
+        "G6", "H6", "I6", "J6", "K6",
+        "G7", "H7", "I7", "J7", "K7",
+        "G8", "H8", "I8", "J8", "K8",
+        "G9", "H9", "I9", "J9", "K9",
+        "G10", "H10", "I10", "J10", "K10",
+        "G11", "H11", "I11", "J11", "K11"
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "cell_id": "A1",
+      "value": "EXECUTIVE PERFORMANCE DASHBOARD",
+      "style": {
+        "bg_color": "#212121",
+        "fg_color": "#FFFFFF",
+        "font_size": 14.0,
+        "bold": true,
+        "h_align": "center",
+        "v_align": "middle"
+      }
+    },
+    {
+      "cell_id": "A2",
+      "value": "Total Sales",
+      "style": {
+        "bg_color": "#CFD8DC",
+        "bold": true,
+        "h_align": "center"
+      }
+    },
+    {
+      "cell_id": "A3",
+      "value": 15420.50,
+      "style": {
+        "bg_color": "#ECEFF1",
+        "font_size": 12.0,
+        "bold": true,
+        "h_align": "center",
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "C2",
+      "value": "Transactions",
+      "style": {
+        "bg_color": "#CFD8DC",
+        "bold": true,
+        "h_align": "center"
+      }
+    },
+    {
+      "cell_id": "C3",
+      "value": 320,
+      "style": {
+        "bg_color": "#ECEFF1",
+        "font_size": 12.0,
+        "bold": true,
+        "h_align": "center",
+        "number_format": "#,##0"
+      }
+    },
+    {
+      "cell_id": "G2",
+      "value": "Avg Order Value",
+      "style": {
+        "bg_color": "#CFD8DC",
+        "bold": true,
+        "h_align": "center"
+      }
+    },
+    {
+      "cell_id": "G3",
+      "formula": "=A3/C3",
+      "style": {
+        "bg_color": "#ECEFF1",
+        "font_size": 12.0,
+        "bold": true,
+        "h_align": "center",
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "I2",
+      "value": "Refunds Rate",
+      "style": {
+        "bg_color": "#CFD8DC",
+        "bold": true,
+        "h_align": "center"
+      }
+    },
+    {
+      "cell_id": "I3",
+      "value": 0.015,
+      "style": {
+        "bg_color": "#ECEFF1",
+        "font_size": 12.0,
+        "bold": true,
+        "h_align": "center",
+        "number_format": "0.0%"
+      }
+    },
+    {
+      "cell_id": "A6",
+      "value": "Date",
+      "style": {
+        "bg_color": "#37474F",
+        "fg_color": "#FFFFFF",
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "B6",
+      "value": "Category",
+      "style": {
+        "bg_color": "#37474F",
+        "fg_color": "#FFFFFF",
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "C6",
+      "value": "Qty",
+      "style": {
+        "bg_color": "#37474F",
+        "fg_color": "#FFFFFF",
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "D6",
+      "value": "Price",
+      "style": {
+        "bg_color": "#37474F",
+        "fg_color": "#FFFFFF",
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "E6",
+      "value": "Revenue",
+      "style": {
+        "bg_color": "#37474F",
+        "fg_color": "#FFFFFF",
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "A7",
+      "value": "2026-05-20"
+    },
+    {
+      "cell_id": "B7",
+      "value": "Coffee"
+    },
+    {
+      "cell_id": "C7",
+      "value": 10
+    },
+    {
+      "cell_id": "D7",
+      "value": 4.50,
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "E7",
+      "formula": "=C7*D7",
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "A8",
+      "value": "2026-05-21"
+    },
+    {
+      "cell_id": "B8",
+      "value": "Tea"
+    },
+    {
+      "cell_id": "C8",
+      "value": 15
+    },
+    {
+      "cell_id": "D8",
+      "value": 3.00,
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "E8",
+      "formula": "=C8*D8",
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "A9",
+      "value": "2026-05-22"
+    },
+    {
+      "cell_id": "B9",
+      "value": "Muffin"
+    },
+    {
+      "cell_id": "C9",
+      "value": 8
+    },
+    {
+      "cell_id": "D9",
+      "value": 3.50,
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "E9",
+      "formula": "=C9*D9",
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "A10",
+      "value": "2026-05-23"
+    },
+    {
+      "cell_id": "B10",
+      "value": "Croissant"
+    },
+    {
+      "cell_id": "C10",
+      "value": 12
+    },
+    {
+      "cell_id": "D10",
+      "value": 4.00,
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "E10",
+      "formula": "=C10*D10",
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "A11",
+      "value": "Total"
+    },
+    {
+      "cell_id": "B11",
+      "value": ""
+    },
+    {
+      "cell_id": "C11",
+      "formula": "=SUM(C7:C10)",
+      "style": {
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "D11",
+      "value": ""
+    },
+    {
+      "cell_id": "E11",
+      "formula": "=SUM(E7:E10)",
+      "style": {
+        "bold": true,
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "G6",
+      "value": "[ VISUAL SALES TREND CHART ]",
+      "style": {
+        "bg_color": "#FAFAFA",
+        "fg_color": "#757575",
+        "bold": true,
+        "h_align": "center",
+        "v_align": "middle",
+        "border_top": "thin",
+        "border_bottom": "thin",
+        "border_left": "thin",
+        "border_right": "thin"
+      }
+    }
+  ],
+  "merges": [
+    {
+      "range": "A1:K1"
+    },
+    {
+      "range": "A2:B2"
+    },
+    {
+      "range": "A3:B3"
+    },
+    {
+      "range": "C2:D2"
+    },
+    {
+      "range": "C3:D3"
+    },
+    {
+      "range": "G2:H2"
+    },
+    {
+      "range": "G3:H3"
+    },
+    {
+      "range": "I2:J2"
+    },
+    {
+      "range": "I3:J3"
+    },
+    {
+      "range": "G6:K11"
+    }
+  ],
+  "named_ranges": [
+    {
+      "name": "KpiSales",
+      "range": "A3"
+    },
+    {
+      "name": "RecentSalesTotal",
+      "range": "E11"
+    }
+  ]
+}

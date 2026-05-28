@@ -1,0 +1,134 @@
+import json
+import os
+import pytest
+from unittest.mock import MagicMock, call
+
+from core.blueprint import Blueprint
+from core.validator.schema import BlueprintValidator
+from adapters.uno.renderer import UNOAdapter
+from adapters.uno.style_mapper import hex_to_uno_color
+
+
+@pytest.fixture
+def pos_blueprint():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    fixture_path = os.path.join(current_dir, "fixtures", "pos_blueprint.json")
+    with open(fixture_path, "r") as f:
+        raw_json = f.read()
+    validator = BlueprintValidator()
+    return validator.validate(raw_json)
+
+
+def test_uno_renderer_all_calls(pos_blueprint):
+    # Mock XComponent Document
+    mock_doc = MagicMock()
+    mock_controller = MagicMock()
+    mock_sheet = MagicMock()
+    
+    # Configure controller and sheet relationships
+    mock_doc.getCurrentController.return_value = mock_controller
+    mock_controller.getActiveSheet.return_value = mock_sheet
+    
+    # Mock cells and columns
+    mock_cells = {}
+    mock_cols = {}
+    mock_rows = {}
+    
+    def get_cell_side_effect(name):
+        if name not in mock_cells:
+            cell = MagicMock()
+            cell.setPropertyValue = MagicMock()
+            cell.setFormula = MagicMock()
+            cell.setValue = MagicMock()
+            cell._val_str = ""
+            cell.setString.side_effect = lambda val: setattr(cell, '_val_str', val)
+            cell.getString.side_effect = lambda: cell._val_str
+            # Mock Validation object on cell
+            mock_validation = MagicMock()
+            cell.Validation = mock_validation
+            mock_cells[name] = cell
+        return mock_cells[name]
+        
+    def get_col_side_effect(name):
+        if name not in mock_cols:
+            mock_cols[name] = MagicMock()
+        return mock_cols[name]
+        
+    def get_row_side_effect(idx):
+        if idx not in mock_rows:
+            mock_rows[idx] = MagicMock()
+        return mock_rows[idx]
+        
+    mock_sheet.getCellRangeByName.side_effect = get_cell_side_effect
+    mock_sheet.getColumns().getByName.side_effect = get_col_side_effect
+    mock_sheet.getRows().getByIndex.side_effect = get_row_side_effect
+    
+    # Instantiate adapter and render
+    adapter = UNOAdapter()
+    adapter.render(pos_blueprint, mock_doc)
+    
+    # Assert Gridlines set
+    # pos_blueprint has hide_gridlines = false, so ShowGrid should be True
+    assert mock_controller.ShowGrid is True
+    
+    # Assert Col Widths set
+    # col_widths: "A": 15.0, "B": 20.0
+    mock_sheet.getColumns().getByName.assert_any_call("A")
+    mock_sheet.getColumns().getByName.assert_any_call("B")
+    
+    # Width should be int(width * 35.278)
+    # A width: 15 * 35.278 = 529
+    # B width: 20 * 35.278 = 705
+    col_a = mock_cols["A"]
+    assert col_a.Width == 529
+    col_b = mock_cols["B"]
+    assert col_b.Width == 705
+
+    # Assert Merges called
+    # Ranges: "A1:E2", "D5:E5"
+    mock_sheet.getCellRangeByName.assert_any_call("A1:E2")
+    mock_sheet.getCellRangeByName.assert_any_call("D5:E5")
+    mock_sheet.getCellRangeByName("A1:E2").merge.assert_called_with(True)
+    mock_sheet.getCellRangeByName("D5:E5").merge.assert_called_with(True)
+
+    # Assert Cell Values and Formulas
+    # Cell A1 value: "POINT OF SALE CHECKOUT"
+    mock_cells["A1"].setString.assert_called_with("POINT OF SALE CHECKOUT")
+    # Cell B10 formula: "=B6*B7"
+    mock_cells["B10"].setFormula.assert_called_with("=B6*B7")
+    # Cell B6 value: 2
+    mock_cells["B6"].setValue.assert_called_with(2)
+
+    # Assert Cell Styles Mapping
+    # Cell A1 styling: bg_color: "#1A237E" (indigo), fg_color: "#FFFFFF", font_size: 16.0, bold: True, h_align: center
+    cell_a1 = mock_cells["A1"]
+    
+    # Check calls to setPropertyValue
+    # bg_color = "#1A237E" -> hex_to_uno_color -> 1713022 (0x1A237E)
+    expected_bg = hex_to_uno_color("#1A237E")
+    expected_fg = hex_to_uno_color("#FFFFFF")
+    
+    cell_a1.setPropertyValue.assert_any_call("CellBackColor", expected_bg)
+    cell_a1.setPropertyValue.assert_any_call("CharColor", expected_fg)
+    cell_a1.setPropertyValue.assert_any_call("CharHeight", 16.0)
+    # BOLD CharWeight (from style_mapper fallback / FontWeight.BOLD)
+    cell_a1.setPropertyValue.assert_any_call("CharWeight", 150.0)
+    # HJustify Center = 2
+    cell_a1.setPropertyValue.assert_any_call("HJustify", 2)
+
+    # Assert validations applied
+    # Cell B5 validation: list validation with formula1="Coffee,Tea,Muffin,Croissant"
+    cell_b5 = mock_cells["B5"]
+    assert cell_b5.Validation.Type == 6 # LIST
+    assert cell_b5.Validation.Formula1 == "Coffee,Tea,Muffin,Croissant"
+    assert cell_b5.Validation.AllowEmptyCell is False
+
+    # Assert events applied
+    # Cell D5 has event trigger button action "submit_order"
+    # VND script hyperlink format should be set as cell formula:
+    # '=HYPERLINK("vnd.sun.star.script:Standard.SAB_AutoGenerated.submit_order?language=Basic&location=document"; "Submit Order")'
+    cell_d5 = mock_cells["D5"]
+    expected_macro_formula = (
+        '=HYPERLINK("vnd.sun.star.script:Standard.SAB_AutoGenerated.submit_order?language=Basic&location=document"; "Submit Order")'
+    )
+    cell_d5.setFormula.assert_called_with(expected_macro_formula)

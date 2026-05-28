@@ -1,0 +1,222 @@
+{
+  "meta": {
+    "app_type": "pos",
+    "title": "Point of Sale (POS) Terminal",
+    "description": "Simple POS system for recording transactions, calculating totals, and submitting orders.",
+    "author": "SAB POS Agent",
+    "version": "1.0.0",
+    "frozen_rows": 0,
+    "frozen_cols": 0,
+    "hide_gridlines": false,
+    "col_widths": {
+      "A": 15.0,
+      "B": 20.0,
+      "C": 5.0,
+      "D": 15.0,
+      "E": 15.0
+    },
+    "row_heights": {
+      "1": 25.0,
+      "2": 25.0,
+      "5": 20.0,
+      "6": 20.0,
+      "7": 20.0,
+      "8": 20.0,
+      "10": 24.0
+    }
+  },
+  "regions": [
+    {
+      "region_id": "header_region",
+      "type": "header",
+      "anchor": "A1",
+      "size": [2, 5],
+      "title": "POS Header",
+      "cell_ids": ["A1", "B1", "C1", "D1", "E1", "A2", "B2", "C2", "D2", "E2"]
+    },
+    {
+      "region_id": "input_region",
+      "type": "input",
+      "anchor": "A4",
+      "size": [5, 2],
+      "title": "Transaction Details",
+      "cell_ids": ["A4", "B4", "A5", "B5", "A6", "B6", "A7", "B7", "A8", "B8"]
+    },
+    {
+      "region_id": "output_region",
+      "type": "output",
+      "anchor": "A10",
+      "size": [1, 2],
+      "title": "Summary",
+      "cell_ids": ["A10", "B10"]
+    },
+    {
+      "region_id": "action_region",
+      "type": "input",
+      "anchor": "D5",
+      "size": [1, 2],
+      "title": "Actions",
+      "cell_ids": ["D5", "E5"]
+    }
+  ],
+  "cells": [
+    {
+      "cell_id": "A1",
+      "value": "POINT OF SALE CHECKOUT",
+      "style": {
+        "bg_color": "#1A237E",
+        "fg_color": "#FFFFFF",
+        "font_size": 16.0,
+        "bold": true,
+        "h_align": "center",
+        "v_align": "middle"
+      }
+    },
+    {
+      "cell_id": "A4",
+      "value": "Item Details",
+      "style": {
+        "bg_color": "#E8EAF6",
+        "bold": true,
+        "h_align": "left"
+      }
+    },
+    {
+      "cell_id": "B4",
+      "value": "",
+      "style": {
+        "bg_color": "#E8EAF6"
+      }
+    },
+    {
+      "cell_id": "A5",
+      "value": "Product",
+      "style": {
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "B5",
+      "value": "Coffee",
+      "style": {
+        "bg_color": "#FAFAFA"
+      },
+      "validation": {
+        "type": "list",
+        "formula1": "Coffee,Tea,Muffin,Croissant",
+        "allow_blank": false,
+        "error_message": "Please choose a valid product from the dropdown."
+      }
+    },
+    {
+      "cell_id": "A6",
+      "value": "Quantity",
+      "style": {
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "B6",
+      "value": 2,
+      "style": {
+        "bg_color": "#FAFAFA",
+        "number_format": "0"
+      },
+      "validation": {
+        "type": "whole",
+        "formula1": "1",
+        "allow_blank": false,
+        "error_message": "Quantity must be at least 1."
+      }
+    },
+    {
+      "cell_id": "A7",
+      "value": "Unit Price",
+      "style": {
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "B7",
+      "value": 4.50,
+      "style": {
+        "bg_color": "#FAFAFA",
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "A8",
+      "value": "Payment Method",
+      "style": {
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "B8",
+      "value": "Cash",
+      "style": {
+        "bg_color": "#FAFAFA"
+      },
+      "validation": {
+        "type": "list",
+        "formula1": "Cash,Card,Mobile",
+        "allow_blank": false,
+        "error_message": "Please select a payment method."
+      }
+    },
+    {
+      "cell_id": "A10",
+      "value": "Total Amount",
+      "style": {
+        "bg_color": "#FFF9C4",
+        "bold": true,
+        "border_top": "thin",
+        "border_bottom": "double"
+      }
+    },
+    {
+      "cell_id": "B10",
+      "formula": "=B6*B7",
+      "style": {
+        "bg_color": "#FFF9C4",
+        "bold": true,
+        "number_format": "$#,##0.00",
+        "border_top": "thin",
+        "border_bottom": "double"
+      }
+    },
+    {
+      "cell_id": "D5",
+      "value": "Submit Order",
+      "style": {
+        "bg_color": "#2E7D32",
+        "fg_color": "#FFFFFF",
+        "bold": true,
+        "h_align": "center",
+        "v_align": "middle",
+        "border_top": "thin",
+        "border_bottom": "thin",
+        "border_left": "thin",
+        "border_right": "thin"
+      },
+      "event": {
+        "type": "button",
+        "action": "submit_order"
+      }
+    }
+  ],
+  "merges": [
+    {
+      "range": "A1:E2"
+    },
+    {
+      "range": "D5:E5"
+    }
+  ],
+  "named_ranges": [
+    {
+      "name": "TransactionTotal",
+      "range": "B10"
+    }
+  ]
+}

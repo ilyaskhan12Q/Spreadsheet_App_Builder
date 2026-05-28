@@ -1,0 +1,346 @@
+{
+  "meta": {
+    "app_type": "invoice",
+    "title": "Professional Invoice Generator",
+    "description": "Standard invoice with line items, tax lookup, calculations, and client info.",
+    "author": "SAB Invoice Agent",
+    "version": "1.0.0",
+    "frozen_rows": 0,
+    "frozen_cols": 0,
+    "hide_gridlines": false,
+    "col_widths": {
+      "A": 25.0,
+      "B": 10.0,
+      "C": 15.0,
+      "D": 12.0,
+      "E": 15.0
+    },
+    "row_heights": {
+      "1": 25.0,
+      "2": 25.0,
+      "9": 22.0
+    }
+  },
+  "regions": [
+    {
+      "region_id": "invoice_header",
+      "type": "header",
+      "anchor": "A1",
+      "size": [2, 5],
+      "title": "Invoice Header",
+      "cell_ids": ["A1", "B1", "C1", "D1", "E1", "A2", "B2", "C2", "D2", "E2"]
+    },
+    {
+      "region_id": "client_info",
+      "type": "input",
+      "anchor": "A4",
+      "size": [3, 2],
+      "title": "Client Info",
+      "cell_ids": ["A4", "B4", "A5", "B5", "A6", "B6"]
+    },
+    {
+      "region_id": "line_items",
+      "type": "data_table",
+      "anchor": "A9",
+      "size": [5, 5],
+      "title": "Line Items",
+      "cell_ids": [
+        "A9", "B9", "C9", "D9", "E9",
+        "A10", "B10", "C10", "D10", "E10",
+        "A11", "B11", "C11", "D11", "E11",
+        "A12", "B12", "C12", "D12", "E12",
+        "A13", "B13", "C13", "D13", "E13"
+      ]
+    },
+    {
+      "region_id": "totals_region",
+      "type": "output",
+      "anchor": "D14",
+      "size": [3, 2],
+      "title": "Totals",
+      "cell_ids": ["D14", "E14", "D15", "E15", "D16", "E16"]
+    }
+  ],
+  "cells": [
+    {
+      "cell_id": "A1",
+      "value": "INVOICE",
+      "style": {
+        "bg_color": "#4A148C",
+        "fg_color": "#FFFFFF",
+        "font_size": 18.0,
+        "bold": true,
+        "h_align": "center",
+        "v_align": "middle"
+      }
+    },
+    {
+      "cell_id": "A4",
+      "value": "Client Name",
+      "style": {
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "B4",
+      "value": "Acme Corp",
+      "style": {
+        "bg_color": "#FAFAFA"
+      }
+    },
+    {
+      "cell_id": "A5",
+      "value": "Invoice Date",
+      "style": {
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "B5",
+      "value": "2026-05-28",
+      "style": {
+        "bg_color": "#FAFAFA",
+        "number_format": "yyyy-mm-dd"
+      }
+    },
+    {
+      "cell_id": "A6",
+      "value": "Invoice #",
+      "style": {
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "B6",
+      "value": "INV-1001",
+      "style": {
+        "bg_color": "#FAFAFA"
+      }
+    },
+    {
+      "cell_id": "A9",
+      "value": "Description",
+      "style": {
+        "bg_color": "#7B1FA2",
+        "fg_color": "#FFFFFF",
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "B9",
+      "value": "Quantity",
+      "style": {
+        "bg_color": "#7B1FA2",
+        "fg_color": "#FFFFFF",
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "C9",
+      "value": "Unit Price",
+      "style": {
+        "bg_color": "#7B1FA2",
+        "fg_color": "#FFFFFF",
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "D9",
+      "value": "Taxable (Y/N)",
+      "style": {
+        "bg_color": "#7B1FA2",
+        "fg_color": "#FFFFFF",
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "E9",
+      "value": "Amount",
+      "style": {
+        "bg_color": "#7B1FA2",
+        "fg_color": "#FFFFFF",
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "A10",
+      "value": "Software License"
+    },
+    {
+      "cell_id": "B10",
+      "value": 2,
+      "style": {
+        "number_format": "0"
+      }
+    },
+    {
+      "cell_id": "C10",
+      "value": 250.00,
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "D10",
+      "value": "Y",
+      "validation": {
+        "type": "list",
+        "formula1": "Y,N",
+        "allow_blank": false
+      }
+    },
+    {
+      "cell_id": "E10",
+      "formula": "=B10*C10",
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "A11",
+      "value": "Consulting Hours"
+    },
+    {
+      "cell_id": "B11",
+      "value": 10,
+      "style": {
+        "number_format": "0"
+      }
+    },
+    {
+      "cell_id": "C11",
+      "value": 120.00,
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "D11",
+      "value": "N",
+      "validation": {
+        "type": "list",
+        "formula1": "Y,N",
+        "allow_blank": false
+      }
+    },
+    {
+      "cell_id": "E11",
+      "formula": "=B11*C11",
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "A12",
+      "value": "Support Plan"
+    },
+    {
+      "cell_id": "B12",
+      "value": 1,
+      "style": {
+        "number_format": "0"
+      }
+    },
+    {
+      "cell_id": "C12",
+      "value": 100.00,
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "D12",
+      "value": "Y",
+      "validation": {
+        "type": "list",
+        "formula1": "Y,N",
+        "allow_blank": false
+      }
+    },
+    {
+      "cell_id": "E12",
+      "formula": "=B12*C12",
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "A13",
+      "value": ""
+    },
+    {
+      "cell_id": "B13",
+      "value": ""
+    },
+    {
+      "cell_id": "C13",
+      "value": ""
+    },
+    {
+      "cell_id": "D13",
+      "value": ""
+    },
+    {
+      "cell_id": "E13",
+      "value": ""
+    },
+    {
+      "cell_id": "D14",
+      "value": "Subtotal",
+      "style": {
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "E14",
+      "formula": "=SUM(E10:E12)",
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "D15",
+      "value": "Tax (8.25%)",
+      "style": {
+        "bold": true
+      }
+    },
+    {
+      "cell_id": "E15",
+      "formula": "=SUMIF(D10:D12,\"Y\",E10:E12)*0.0825",
+      "style": {
+        "number_format": "$#,##0.00"
+      }
+    },
+    {
+      "cell_id": "D16",
+      "value": "Total Due",
+      "style": {
+        "bold": true,
+        "bg_color": "#E8EAF6",
+        "border_bottom": "double"
+      }
+    },
+    {
+      "cell_id": "E16",
+      "formula": "=E14+E15",
+      "style": {
+        "bold": true,
+        "bg_color": "#E8EAF6",
+        "number_format": "$#,##0.00",
+        "border_bottom": "double"
+      }
+    }
+  ],
+  "merges": [
+    {
+      "range": "A1:E2"
+    }
+  ],
+  "named_ranges": [
+    {
+      "name": "InvoiceTotal",
+      "range": "E16"
+    }
+  ]
+}
