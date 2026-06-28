@@ -1,16 +1,17 @@
-from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from enum import StrEnum
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
-class AppType(str, Enum):
+class AppType(StrEnum):
     POS = "pos"
     DASHBOARD = "dashboard"
     INVOICE = "invoice"
     OTHER = "other"
 
 
-class RegionType(str, Enum):
+class RegionType(StrEnum):
     HEADER = "header"
     INPUT = "input"
     OUTPUT = "output"
@@ -19,7 +20,7 @@ class RegionType(str, Enum):
     KPI_CARD = "kpi_card"
 
 
-class BorderStyle(str, Enum):
+class BorderStyle(StrEnum):
     NONE = "none"
     THIN = "thin"
     MEDIUM = "medium"
@@ -29,25 +30,25 @@ class BorderStyle(str, Enum):
     DOTTED = "dotted"
 
 
-class HAlign(str, Enum):
+class HAlign(StrEnum):
     LEFT = "left"
     CENTER = "center"
     RIGHT = "right"
     JUSTIFY = "justify"
 
 
-class VAlign(str, Enum):
+class VAlign(StrEnum):
     TOP = "top"
     MIDDLE = "middle"
     BOTTOM = "bottom"
 
 
 class CellStyle(BaseModel):
-    bg_color: Optional[str] = Field(
+    bg_color: str | None = Field(
         None,
         description="Background color as hex string, e.g., '#FFFFFF' or '#3F51B5'."
     )
-    fg_color: Optional[str] = Field(
+    fg_color: str | None = Field(
         None,
         description="Foreground text color as hex string, e.g., '#000000' or '#E0E0E0'."
     )
@@ -79,9 +80,12 @@ class CellStyle(BaseModel):
         BorderStyle.NONE,
         description="Border style for the right side."
     )
-    number_format: Optional[str] = Field(
+    number_format: str | None = Field(
         None,
-        description="Excel/LibreOffice number format pattern, e.g., '0.00', '$#,##0.00', 'yyyy-mm-dd'."
+        description=(
+            "Excel/LibreOffice number format pattern, "
+            "e.g., '0.00', '$#,##0.00', 'yyyy-mm-dd'."
+        ),
     )
     h_align: HAlign = Field(
         HAlign.LEFT,
@@ -100,13 +104,16 @@ class Validation(BaseModel):
     )
     formula1: str = Field(
         ...,
-        description="Validation criteria, source list, or expression, e.g., 'Cash,Card,Online' or '=Sheet2!$A$1:$A$10'."
+        description=(
+            "Validation criteria, source list, or expression, "
+            "e.g., 'Cash,Card,Online' or '=Sheet2!$A$1:$A$10'."
+        ),
     )
     allow_blank: bool = Field(
         True,
         description="True if blank cell is allowed during validation."
     )
-    error_message: Optional[str] = Field(
+    error_message: str | None = Field(
         None,
         description="Custom error message to display when validation fails."
     )
@@ -132,21 +139,24 @@ class Cell(BaseModel):
         None,
         description="Direct cell value, which can be a string, number, or boolean."
     )
-    formula: Optional[str] = Field(
+    formula: str | None = Field(
         None,
         description="Formula string starting with '='. E.g., '=SUM(B2:B10)'."
     )
-    style: Optional[CellStyle] = Field(
+    style: CellStyle | None = Field(
         None,
         description="Cell styling attributes."
     )
-    validation: Optional[Validation] = Field(
+    validation: Validation | None = Field(
         None,
         description="Cell data validation rules."
     )
-    event: Optional[Event] = Field(
+    event: Event | None = Field(
         None,
-        description="Interactive event configuration for the cell (such as click macros for buttons)."
+        description=(
+            "Interactive event configuration for the cell "
+            "(such as click macros for buttons)."
+        ),
     )
 
 
@@ -181,15 +191,15 @@ class Region(BaseModel):
         ...,
         description="Top-left starting cell of the region in A1 notation, e.g., 'A1'."
     )
-    size: Tuple[int, int] = Field(
+    size: tuple[int, int] = Field(
         ...,
         description="Size of the region as (rows, cols) dimensions, e.g., (10, 5)."
     )
-    title: Optional[str] = Field(
+    title: str | None = Field(
         None,
         description="Header/Title text for the region."
     )
-    cell_ids: List[str] = Field(
+    cell_ids: list[str] = Field(
         ...,
         description="List of cell references belonging to this region in A1 notation."
     )
@@ -228,34 +238,80 @@ class Meta(BaseModel):
         False,
         description="True to hide default gridlines, False to show them."
     )
-    col_widths: Dict[str, float] = Field(
+    col_widths: dict[str, float] = Field(
         default_factory=dict,
         description="Custom width values for columns (col letter -> width in points/chars)."
     )
-    row_heights: Dict[int, float] = Field(
+    row_heights: dict[int, float] = Field(
         default_factory=dict,
         description="Custom height values for rows (row number -> height in points/chars)."
     )
 
 
+class ConditionalFormat(BaseModel):
+    """A conditional formatting rule applied to a cell range."""
+
+    range: str = Field(
+        ...,
+        description="Cell range in A1 notation, e.g., 'B2:B20'.",
+    )
+    rule_type: str = Field(
+        ...,
+        description=(
+            "Type of conditional rule: 'cell_value', 'text_contains', "
+            "'color_scale', 'data_bar', 'icon_set'."
+        ),
+    )
+    operator: str | None = Field(
+        None,
+        description=(
+            "Comparison operator for cell_value rules: 'greaterThan', "
+            "'lessThan', 'equal', 'between', 'notEqual'."
+        ),
+    )
+    formula: str | None = Field(
+        None,
+        description="Threshold value or formula for the condition.",
+    )
+    style: CellStyle | None = Field(
+        None,
+        description="Style to apply when the condition is met.",
+    )
+    priority: int = Field(
+        1,
+        description="Rule priority (lower number = higher priority).",
+    )
+
+
 class Blueprint(BaseModel):
+    """The complete, renderable spreadsheet blueprint.
+
+    This is the universal data contract between the compiler and all
+    renderers. Every cell position, style, formula, merge, and validation
+    rule is fully resolved — renderers are pure functions of this schema.
+    """
+
     meta: Meta = Field(
         ...,
-        description="Metadata and display settings for the spreadsheet."
+        description="Metadata and display settings for the spreadsheet.",
     )
-    regions: List[Region] = Field(
+    regions: list[Region] = Field(
         ...,
-        description="List of functional regions grouping cells together."
+        description="List of functional regions grouping cells together.",
     )
-    cells: List[Cell] = Field(
+    cells: list[Cell] = Field(
         ...,
-        description="Individual cell definitions including content and styles."
+        description="Individual cell definitions including content and styles.",
     )
-    merges: List[MergeConfig] = Field(
+    merges: list[MergeConfig] = Field(
         default_factory=list,
-        description="Ranges that should be merged."
+        description="Ranges that should be merged.",
     )
-    named_ranges: List[NamedRange] = Field(
+    named_ranges: list[NamedRange] = Field(
         default_factory=list,
-        description="Definitions of named ranges."
+        description="Definitions of named ranges.",
+    )
+    conditional_formats: list[ConditionalFormat] = Field(
+        default_factory=list,
+        description="Conditional formatting rules.",
     )
