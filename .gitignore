@@ -37,15 +37,15 @@ env/
 coverage.xml
 htmlcov/
 
-# Environment files
+# Environment files — API keys are NEVER committed
 .env
 .env.*
 !.env.example
 
-# Node / TypeScript (Office.js adapter)
+# Node / TypeScript (web app)
 node_modules/
-adapters/officejs/node_modules/
-adapters/officejs/dist/
+web/node_modules/
+web/dist/
 *.tsbuildinfo
 
 # LibreOffice / Calc
@@ -54,7 +54,15 @@ adapters/officejs/dist/
 *.bak
 *.~*
 
+# Generated outputs
+output/
+*.xlsx
+
 # Logs and local runtime files
 *.log
 *.pid
 *.pid.lock
+
+# Agents / Codex (external tool configs)
+.agents/
+.codex/

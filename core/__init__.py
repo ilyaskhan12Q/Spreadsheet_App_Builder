@@ -1,1 +1,1 @@
-# Core package initialization
+"""core — SAB core pipeline: schemas, compiler, AI providers, validator."""

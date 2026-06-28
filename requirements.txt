@@ -1,9 +1,16 @@
-anthropic>=0.30.0
+# Core
 pydantic>=2.0.0
+openpyxl>=3.1.0
 click>=8.1.0
 python-dotenv>=1.0.0
+
+# AI providers
+anthropic>=0.30.0
+openai>=1.30.0
+google-genai>=0.7.0
+
+# Dev
 pytest>=7.0.0
-ruff>=0.1.0
+pytest-cov>=4.0.0
+ruff>=0.4.0
 mypy>=1.0.0
-fastapi>=0.100.0
-uvicorn>=0.20.0
