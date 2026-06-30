@@ -1,14 +1,14 @@
 import json
 import os
-import pytest
 from unittest.mock import MagicMock, patch
-from pydantic import ValidationError
 
+import pytest
+
+from core.ai.translator import AITranslator, TranslationError, describe_provider_setup
 from core.blueprint import Blueprint
 from core.scanner.context_builder import SpreadsheetContext
-from core.ai.translator import AITranslator, TranslationError, describe_provider_setup
-from core.validator.schema import BlueprintValidator
 from core.validator.constraint_checker import LayoutConflictError
+from core.validator.schema import BlueprintValidator
 
 
 @pytest.fixture
@@ -19,35 +19,35 @@ def fixtures_dir():
 
 @pytest.fixture
 def pos_json(fixtures_dir):
-    with open(os.path.join(fixtures_dir, "pos_blueprint.json"), "r") as f:
+    with open(os.path.join(fixtures_dir, "pos_blueprint.json")) as f:
         return f.read()
 
 
 @pytest.fixture
 def dashboard_json(fixtures_dir):
-    with open(os.path.join(fixtures_dir, "dashboard_blueprint.json"), "r") as f:
+    with open(os.path.join(fixtures_dir, "dashboard_blueprint.json")) as f:
         return f.read()
 
 
 @pytest.fixture
 def invoice_json(fixtures_dir):
-    with open(os.path.join(fixtures_dir, "invoice_blueprint.json"), "r") as f:
+    with open(os.path.join(fixtures_dir, "invoice_blueprint.json")) as f:
         return f.read()
 
 
 def test_validation_happy_path(pos_json, dashboard_json, invoice_json):
     validator = BlueprintValidator()
-    
+
     # Test POS
     pos_bp = validator.validate(pos_json)
     assert isinstance(pos_bp, Blueprint)
     assert pos_bp.meta.title == "Point of Sale (POS) Terminal"
-    
+
     # Test Dashboard
     dash_bp = validator.validate(dashboard_json)
     assert isinstance(dash_bp, Blueprint)
     assert dash_bp.meta.hide_gridlines is True
-    
+
     # Test Invoice
     inv_bp = validator.validate(invoice_json)
     assert isinstance(inv_bp, Blueprint)
@@ -56,7 +56,7 @@ def test_validation_happy_path(pos_json, dashboard_json, invoice_json):
 
 def test_bounds_conflict(pos_json):
     validator = BlueprintValidator()
-    
+
     # Cell bounds conflict
     data = json.loads(pos_json)
     data["cells"][0]["cell_id"] = "AY100"  # Col 51, max_col is 50
@@ -118,43 +118,63 @@ def test_context_prompt_serialization():
     assert "Alice" in prompt_str
 
 
+POS_SPEC_JSON = """{
+  "app_type": "pos",
+  "title": "Point of Sale (POS) Terminal",
+  "description": "A Point of Sale application",
+  "sections": [
+    {
+      "section_id": "details",
+      "title": "Transaction Details",
+      "section_type": "input_form",
+      "fields": [
+        {"name": "Product", "field_type": "dropdown", "options": ["Coffee", "Tea"]},
+        {"name": "Quantity", "field_type": "number", "default_value": 1, "validation_rule": ">=1"},
+        {"name": "Price", "field_type": "currency", "default_value": 2.50},
+        {"name": "Total", "field_type": "formula", "formula": "=Quantity * Price"}
+      ]
+    }
+  ]
+}"""
+
+
 @patch("anthropic.Anthropic")
-def test_translator_happy_path(mock_anthropic, pos_json):
+def test_translator_happy_path(mock_anthropic):
     # Mock anthropic messages response
     mock_client = MagicMock()
     mock_anthropic.return_value = mock_client
-    
+
     mock_message = MagicMock()
-    mock_message.content = [MagicMock(text=pos_json)]
+    mock_message.content = [MagicMock(text=POS_SPEC_JSON)]
     mock_client.messages.create.return_value = mock_message
 
     translator = AITranslator(api_key="fake-key")
     ctx = SpreadsheetContext()
     res = translator.translate("Create a POS system", ctx)
-    
-    assert res.strip() == pos_json.strip()
+
+    assert res.strip() == POS_SPEC_JSON.strip()
     mock_client.messages.create.assert_called_once()
 
 
 @patch("anthropic.Anthropic")
-def test_translator_retry_and_success(mock_anthropic, pos_json):
+def test_translator_retry_and_success(mock_anthropic):
     mock_client = MagicMock()
     mock_anthropic.return_value = mock_client
 
     # First call returns invalid JSON, second call returns valid POS JSON
     mock_message_invalid = MagicMock()
     mock_message_invalid.content = [MagicMock(text="INVALID_JSON_HERE")]
-    
+
     mock_message_valid = MagicMock()
-    mock_message_valid.content = [MagicMock(text=pos_json)]
-    
+    mock_message_valid.content = [MagicMock(text=POS_SPEC_JSON)]
+
     mock_client.messages.create.side_effect = [mock_message_invalid, mock_message_valid]
 
     translator = AITranslator(api_key="fake-key")
     ctx = SpreadsheetContext()
     res = translator.translate("Create POS", ctx)
 
-    assert res.strip() == pos_json.strip()
+    assert res.strip() == POS_SPEC_JSON.strip()
     assert mock_client.messages.create.call_count == 2
 
 
@@ -173,22 +193,22 @@ def test_translator_max_retries_failure(mock_anthropic):
 
     with pytest.raises(TranslationError) as excinfo:
         translator.translate("Create POS", ctx)
-    
-    assert "Failed to translate and validate blueprint after 2 retries" in str(excinfo.value)
+
+    assert "Failed to translate and validate AppSpec after 2 retries" in str(excinfo.value)
     assert mock_client.messages.create.call_count == 3  # Initial + 2 retries = 3 calls
 
 
-def test_translator_gemini_happy_path(pos_json):
+def test_translator_gemini_happy_path():
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.text = pos_json
+    mock_response.text = POS_SPEC_JSON
     mock_client.models.generate_content.return_value = mock_response
 
     translator = AITranslator(provider="gemini", client=mock_client)
     ctx = SpreadsheetContext()
     res = translator.translate("Create a POS system", ctx)
 
-    assert res.strip() == pos_json.strip()
+    assert res.strip() == POS_SPEC_JSON.strip()
     mock_client.models.generate_content.assert_called_once()
 
 
@@ -196,3 +216,4 @@ def test_describe_provider_setup(monkeypatch):
     monkeypatch.setenv("SAB_GEMINI_API_KEY", "test-gemini-key")
     assert describe_provider_setup("gemini") == "gemini configured via SAB_GEMINI_API_KEY"
     assert describe_provider_setup("claude", api_key="override-key") == "claude configured via explicit API key"
+

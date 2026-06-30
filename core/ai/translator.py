@@ -1,26 +1,28 @@
-import importlib
+"""core/ai/translator.py — AI Translation layer for AppSpec."""
 import os
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
+from core.ai.providers import get_provider
+from core.app_spec import AppSpec
 from core.scanner.context_builder import SpreadsheetContext
-from core.validator.schema import BlueprintValidator
 
-
-AIProvider = Literal["claude", "gemini"]
+AIProvider = Literal["claude", "gemini", "openai"]
 
 DEFAULT_MODELS: dict[AIProvider, str] = {
     "claude": "claude-sonnet-4-20250514",
     "gemini": "gemini-2.5-flash",
+    "openai": "gpt-4o",
 }
 
 PROVIDER_KEY_ENV_VARS: dict[AIProvider, tuple[str, ...]] = {
     "claude": ("SAB_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY"),
     "gemini": ("SAB_GEMINI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"),
+    "openai": ("SAB_OPENAI_API_KEY", "OPENAI_API_KEY"),
 }
 
 
 class TranslationError(Exception):
-    """Raised when AITranslator fails to generate a valid blueprint after retries."""
+    """Raised when AITranslator fails to generate a valid AppSpec after retries."""
 
     pass
 
@@ -39,36 +41,15 @@ def _strip_code_fences(text: str) -> str:
     return "\n".join(lines).strip()
 
 
-def _extract_text_response(response: Any) -> str:
-    """Normalize provider-specific response objects into plain text."""
-    text = getattr(response, "text", None)
-    if isinstance(text, str) and text.strip():
-        return text.strip()
-
-    content = getattr(response, "content", None)
-    if content:
-        first_block = content[0]
-        block_text = getattr(first_block, "text", "")
-        if isinstance(block_text, str):
-            return block_text.strip()
-
-    candidates = getattr(response, "candidates", None)
-    if candidates:
-        first_candidate = candidates[0]
-        candidate_content = getattr(first_candidate, "content", None)
-        if candidate_content:
-            parts = getattr(candidate_content, "parts", None) or []
-            if parts:
-                part_text = getattr(parts[0], "text", "")
-                if isinstance(part_text, str):
-                    return part_text.strip()
-
-    raise TranslationError("AI provider response did not include any text content.")
-
-
-def resolve_provider_api_key(provider: AIProvider, api_key: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
+def resolve_provider_api_key(
+    provider: AIProvider, api_key: str | None = None
+) -> tuple[str | None, str | None]:
+    """Resolve API key from parameter or environment variables."""
     if api_key:
         return api_key, "explicit API key"
+
+    if provider not in PROVIDER_KEY_ENV_VARS:
+        return None, None
 
     for env_var in PROVIDER_KEY_ENV_VARS[provider]:
         value = os.getenv(env_var)
@@ -78,10 +59,8 @@ def resolve_provider_api_key(provider: AIProvider, api_key: Optional[str] = None
     return None, None
 
 
-def describe_provider_setup(provider: AIProvider, api_key: Optional[str] = None) -> str:
-    """
-    Return a short human-readable summary of the selected provider and key source.
-    """
+def describe_provider_setup(provider: AIProvider, api_key: str | None = None) -> str:
+    """Return a short human-readable summary of the selected provider and key source."""
     resolved_key, source = resolve_provider_api_key(provider, api_key)
     if resolved_key and source:
         return f"{provider} configured via {source}"
@@ -90,11 +69,15 @@ def describe_provider_setup(provider: AIProvider, api_key: Optional[str] = None)
 
 
 class AITranslator:
+    """
+    Translates a user prompt and optional spreadsheet context into a semantic AppSpec JSON.
+    """
+
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         provider: AIProvider = "claude",
-        model: Optional[str] = None,
+        model: str | None = None,
         client: Any = None,
     ):
         if provider not in DEFAULT_MODELS:
@@ -105,78 +88,22 @@ class AITranslator:
         self.model = model or DEFAULT_MODELS[provider]
         self.client = client
 
-    def _resolve_api_key(self, provider: AIProvider) -> Optional[str]:
-        for env_var in PROVIDER_KEY_ENV_VARS[provider]:
-            value = os.getenv(env_var)
-            if value:
-                return value
-        return None
+    def _resolve_api_key(self, provider: AIProvider) -> str | None:
+        resolved_key, _ = resolve_provider_api_key(provider)
+        return resolved_key
 
     def _get_system_prompt(self) -> str:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         prompt_path = os.path.join(current_dir, "system_prompt.txt")
-        with open(prompt_path, "r") as file_handle:
+        with open(prompt_path) as file_handle:
             return file_handle.read()
-
-    def _ensure_client(self) -> Any:
-        if self.client is not None:
-            return self.client
-
-        if not self.api_key:
-            if self.provider == "claude":
-                raise TranslationError(
-                    "Claude provider requires SAB_ANTHROPIC_API_KEY or ANTHROPIC_API_KEY."
-                )
-            raise TranslationError(
-                "Gemini provider requires SAB_GEMINI_API_KEY, GEMINI_API_KEY, or GOOGLE_API_KEY."
-            )
-
-        if self.provider == "claude":
-            anthropic_module = importlib.import_module("anthropic")
-            self.client = anthropic_module.Anthropic(api_key=self.api_key)
-            return self.client
-
-        genai_module = importlib.import_module("google.genai")
-        self.client = genai_module.Client(api_key=self.api_key)
-        return self.client
 
     def _build_prompt(self, prompt: str, context: SpreadsheetContext) -> str:
         return f"User Prompt: {prompt}\n\n{context.to_prompt_string()}"
 
-    def _generate_claude(self, system_prompt: str, messages: list[dict[str, str]]) -> str:
-        client = self._ensure_client()
-        response = client.messages.create(
-            model=self.model,
-            max_tokens=4000,
-            system=system_prompt,
-            messages=messages,
-        )
-        return _extract_text_response(response)
-
-    def _generate_gemini(self, system_prompt: str, contents: str) -> str:
-        client = self._ensure_client()
-        try:
-            types_module = importlib.import_module("google.genai.types")
-            config = types_module.GenerateContentConfig(
-                system_instruction=system_prompt,
-                response_mime_type="application/json",
-            )
-        except ModuleNotFoundError:
-            config = {
-                "system_instruction": system_prompt,
-                "response_mime_type": "application/json",
-            }
-
-        response = client.models.generate_content(
-            model=self.model,
-            contents=contents,
-            config=config,
-        )
-        return _extract_text_response(response)
-
     def translate(self, prompt: str, context: SpreadsheetContext) -> str:
         """
-        Translates a user prompt + spreadsheet context into a raw blueprint JSON string.
+        Translates a user prompt + spreadsheet context into a raw AppSpec JSON string.
         Implements auto-correction retry on validation failure.
         """
         if not self.api_key and self.client is None:
@@ -184,56 +111,82 @@ class AITranslator:
                 raise TranslationError(
                     "Claude provider requires SAB_ANTHROPIC_API_KEY or ANTHROPIC_API_KEY."
                 )
-            raise TranslationError(
-                "Gemini provider requires SAB_GEMINI_API_KEY, GEMINI_API_KEY, or GOOGLE_API_KEY."
-            )
+            elif self.provider == "gemini":
+                raise TranslationError(
+                    "Gemini provider requires SAB_GEMINI_API_KEY, GEMINI_API_KEY, or "
+                    "GOOGLE_API_KEY."
+                )
+            else:
+                raise TranslationError(
+                    "OpenAI provider requires SAB_OPENAI_API_KEY or OPENAI_API_KEY."
+                )
 
         system_prompt = self._get_system_prompt()
         base_prompt = self._build_prompt(prompt, context)
-        validator = BlueprintValidator()
         max_retries = 2
         attempt = 0
         raw_json = ""
         correction_note = ""
 
+        # Initialize the low-level provider wrapper via factory
+        provider_client = get_provider(
+            provider_name=self.provider,
+            api_key=self.api_key or "fake-key",
+            model=self.model,
+            client=self.client,
+        )
+
+        message_history: list[dict[str, str]] = []
+
         while attempt <= max_retries:
             try:
-                if self.provider == "claude":
-                    messages: list[dict[str, str]] = [{"role": "user", "content": base_prompt}]
-                    if correction_note:
-                        messages.extend(
+                if self.provider == "claude" or self.provider == "openai":
+                    if not message_history:
+                        message_history.append({"role": "user", "content": base_prompt})
+                    else:
+                        assistant_content = raw_json or "Error: Empty response"
+                        message_history.extend(
                             [
-                                {"role": "assistant", "content": raw_json or "Error: Empty response"},
-                                {
-                                    "role": "user",
-                                    "content": correction_note,
-                                },
+                                {"role": "assistant", "content": assistant_content},
+                                {"role": "user", "content": correction_note},
                             ]
                         )
-                    raw_json = self._generate_claude(system_prompt, messages)
+                    raw_json = provider_client.generate(
+                        system_prompt=system_prompt,
+                        contents=base_prompt,
+                        message_history=message_history,
+                    )
                 else:
+                    # Gemini or similar (no multi-turn structured messages supported)
                     contents = base_prompt
                     if correction_note:
+                        prev_output = raw_json or "Error: Empty response"
                         contents = (
-                            f"{base_prompt}\n\nPrevious output:\n{raw_json or 'Error: Empty response'}\n\n"
+                            f"{base_prompt}\n\nPrevious output:\n{prev_output}\n\n"
                             f"Validation error:\n{correction_note}"
                         )
-                    raw_json = self._generate_gemini(system_prompt, contents)
+                    raw_json = provider_client.generate(
+                        system_prompt=system_prompt,
+                        contents=contents,
+                    )
 
                 raw_json = _strip_code_fences(raw_json)
-                validator.validate(raw_json)
+
+                # Validate against AppSpec schema
+                AppSpec.model_validate_json(raw_json)
                 return raw_json
 
             except Exception as exc:
                 attempt += 1
                 if attempt > max_retries:
                     raise TranslationError(
-                        f"Failed to translate and validate blueprint after {max_retries} retries. Error: {exc}"
+                        f"Failed to translate and validate AppSpec after "
+                        f"{max_retries} retries. Error: {exc}"
                     ) from exc
 
                 correction_note = (
-                    f"The output failed validation with the following error:\n{exc}\n\n"
-                    "Please correct the JSON blueprint to comply with the schema and rules. "
+                    f"The output failed AppSpec validation with the following error:\n{exc}\n\n"
+                    "Please correct the JSON AppSpec to comply with the schema and rules. "
                     "Do not include any explanation or markdown formatting, output raw JSON only."
                 )
 

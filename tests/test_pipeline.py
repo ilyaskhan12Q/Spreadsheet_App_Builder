@@ -1,26 +1,35 @@
 """Tests for core/pipeline.py orchestrator."""
-import json
-import os
-import pytest
 from unittest.mock import MagicMock, patch
 
-from core.pipeline import run, PipelineError, PipelineResult
+import pytest
+
+from core.pipeline import PipelineError, PipelineResult, run
+
+POS_SPEC_JSON = """{
+  "app_type": "pos",
+  "title": "Point of Sale (POS) Terminal",
+  "description": "A Point of Sale application",
+  "sections": [
+    {
+      "section_id": "details",
+      "title": "Transaction Details",
+      "section_type": "input_form",
+      "fields": [
+        {"name": "Product", "field_type": "dropdown", "options": ["Coffee", "Tea"]},
+        {"name": "Quantity", "field_type": "number", "default_value": 1, "validation_rule": ">=1"},
+        {"name": "Price", "field_type": "currency", "default_value": 2.50},
+        {"name": "Total", "field_type": "formula", "formula": "=Quantity * Price"}
+      ]
+    }
+  ]
+}"""
 
 
-@pytest.fixture
-def pos_json() -> str:
-    fixture_path = os.path.join(
-        os.path.dirname(__file__), "fixtures", "pos_blueprint.json"
-    )
-    with open(fixture_path) as f:
-        return f.read()
-
-
-def test_pipeline_validate_only(pos_json: str):
+def test_pipeline_validate_only():
     """validate_only=True should return a PipelineResult without rendering."""
     with patch("core.pipeline.AITranslator") as MockTranslator:
         instance = MockTranslator.return_value
-        instance.translate.return_value = pos_json
+        instance.translate.return_value = POS_SPEC_JSON
 
         result = run(
             prompt="POS terminal",
@@ -32,16 +41,16 @@ def test_pipeline_validate_only(pos_json: str):
     assert result.blueprint is not None
     assert result.blueprint.meta.title == "Point of Sale (POS) Terminal"
     assert result.rendered is False
-    assert result.raw_json == pos_json
+    assert result.raw_json == POS_SPEC_JSON
 
 
-def test_pipeline_render_uno(pos_json: str):
+def test_pipeline_render_uno():
     """UNO adapter path should call adapter.render() with the blueprint."""
     with (
         patch("core.pipeline.AITranslator") as MockTranslator,
         patch("core.pipeline.UNOAdapter") as MockUNO,
     ):
-        MockTranslator.return_value.translate.return_value = pos_json
+        MockTranslator.return_value.translate.return_value = POS_SPEC_JSON
 
         mock_doc = MagicMock()
         result = run(
@@ -58,10 +67,10 @@ def test_pipeline_render_uno(pos_json: str):
     assert call_args[0][1] is mock_doc
 
 
-def test_pipeline_officejs_no_render(pos_json: str):
+def test_pipeline_officejs_no_render():
     """Office.js adapter path should NOT render server-side."""
     with patch("core.pipeline.AITranslator") as MockTranslator:
-        MockTranslator.return_value.translate.return_value = pos_json
+        MockTranslator.return_value.translate.return_value = POS_SPEC_JSON
 
         result = run(
             prompt="POS terminal",
@@ -85,18 +94,18 @@ def test_pipeline_translation_failure():
 
 
 def test_pipeline_validation_failure():
-    """Invalid JSON should surface as PipelineError at validation stage."""
+    """Invalid JSON or semantic layout failure should surface as PipelineError."""
     with patch("core.pipeline.AITranslator") as MockTranslator:
         MockTranslator.return_value.translate.return_value = '{"bad": "json"}'
 
-        with pytest.raises(PipelineError, match="Validation stage failed"):
+        with pytest.raises(PipelineError, match="Failed to parse AI output as AppSpec JSON"):
             run(prompt="fail", api_key="test-key")
 
 
-def test_pipeline_unknown_adapter(pos_json: str):
+def test_pipeline_unknown_adapter():
     """Unknown adapter names should raise PipelineError."""
     with patch("core.pipeline.AITranslator") as MockTranslator:
-        MockTranslator.return_value.translate.return_value = pos_json
+        MockTranslator.return_value.translate.return_value = POS_SPEC_JSON
 
         with pytest.raises(PipelineError, match="Unknown adapter"):
             run(prompt="POS", api_key="test-key", adapter_name="google_sheets")
