@@ -1,9 +1,10 @@
 import logging
 from typing import Any
+
 from adapters.base import AbstractAdapter, AdapterError
-from core.blueprint import Blueprint
+from adapters.uno.macro_runner import assign_macro_to_cell, insert_macro_stub
 from adapters.uno.style_mapper import map_cell_style
-from adapters.uno.macro_runner import insert_macro_stub, assign_macro_to_cell
+from core.blueprint import Blueprint
 
 logger = logging.getLogger("sab.uno_renderer")
 
@@ -143,8 +144,8 @@ class UNOAdapter(AbstractAdapter):
         """Applies data validation constraints to a UNO Cell."""
         try:
             valid_obj = cell_obj.Validation
-            
-            # ValidationType mapping: 
+
+            # ValidationType mapping:
             # 0=ANY, 1=CUSTOM, 2=WHOLE, 3=DECIMAL, 4=DATE, 5=TEXT_LEN, 6=LIST
             type_map = {
                 "list": 6,
@@ -157,12 +158,12 @@ class UNOAdapter(AbstractAdapter):
             valid_obj.Type = v_type
             valid_obj.Formula1 = validation.formula1
             valid_obj.AllowEmptyCell = validation.allow_blank
-            
+
             if validation.error_message:
                 valid_obj.ErrorMessage = validation.error_message
                 valid_obj.ShowErrorMessage = True
                 valid_obj.ErrorAlertStyle = 1  # STOP style
-                
+
             cell_obj.Validation = valid_obj
         except Exception as e:
             logger.warning(f"Could not apply data validation: {e}")
@@ -185,7 +186,7 @@ class UNOAdapter(AbstractAdapter):
                         Country = "US"
                         Variant = ""
                     locale = DummyLocale()
-            
+
             key = num_formats.queryKey(format_str, locale, False)
             if key == -1:
                 key = num_formats.addNew(format_str, locale)

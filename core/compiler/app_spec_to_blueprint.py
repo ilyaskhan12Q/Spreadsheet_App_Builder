@@ -6,10 +6,10 @@ Uses the DesignPreferences to resolve tokens, and invokes the appropriate templa
 """
 
 from core.app_spec import AppSpec, AppType
-from core.blueprint import Blueprint
 from core.blueprint import AppType as BlueprintAppType
+from core.blueprint import Blueprint
 from core.compiler.design_tokens import resolve_tokens
-from core.compiler.region_templates import pos, dashboard, invoice
+from core.compiler.region_templates import dashboard, invoice, pos
 
 
 class CompilationError(Exception):
@@ -23,7 +23,7 @@ def compile_app_spec(spec: AppSpec) -> Blueprint:
     """
     # 1. Resolve tokens
     tokens = resolve_tokens(spec.app_type, spec.design)
-    
+
     # 2. Select appropriate template compiler
     if spec.app_type == AppType.POS:
         blueprint = pos.compile(spec, tokens)
@@ -40,5 +40,5 @@ def compile_app_spec(spec: AppSpec) -> Blueprint:
         blueprint.meta.app_type = BlueprintAppType.OTHER
     else:
         raise CompilationError(f"Unsupported app type for compilation: {spec.app_type}")
-        
+
     return blueprint

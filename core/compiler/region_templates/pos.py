@@ -14,6 +14,7 @@ Produces a deterministic Blueprint for point-of-sale applications:
 from __future__ import annotations
 
 from core.app_spec import AppSpec, FieldType, SectionType
+from core.blueprint import AppType as BlueprintAppType
 from core.blueprint import (
     Blueprint,
     Cell,
@@ -25,7 +26,6 @@ from core.blueprint import (
     Region,
     VAlign,
 )
-from core.blueprint import AppType as BlueprintAppType
 from core.compiler.design_tokens import ResolvedTokens, resolve_format_hint
 from core.compiler.region_templates.base import (
     FieldRegistry,
@@ -151,7 +151,11 @@ def compile(spec: AppSpec, tokens: ResolvedTokens) -> Blueprint:
                     value=fld.name,
                     style=make_style(
                         tokens,
-                        bg_color=tokens.palette.label_bg if tokens.style.use_section_fills else None,
+                        bg_color=(
+                            tokens.palette.label_bg
+                            if tokens.style.use_section_fills
+                            else None
+                        ),
                         bold=True,
                         border=tokens.style.cell_border,
                     ),

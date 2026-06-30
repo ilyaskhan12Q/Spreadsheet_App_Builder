@@ -14,6 +14,7 @@ Produces a deterministic Blueprint for dashboard applications:
 from __future__ import annotations
 
 from core.app_spec import AppSpec, FieldType, SectionType
+from core.blueprint import AppType as BlueprintAppType
 from core.blueprint import (
     Blueprint,
     Cell,
@@ -25,7 +26,6 @@ from core.blueprint import (
     Region,
     VAlign,
 )
-from core.blueprint import AppType as BlueprintAppType
 from core.compiler.design_tokens import ResolvedTokens, resolve_format_hint
 from core.compiler.region_templates.base import (
     FieldRegistry,

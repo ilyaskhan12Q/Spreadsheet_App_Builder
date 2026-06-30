@@ -1,16 +1,17 @@
 import pytest
+
 from core.app_spec import (
     AppSpec,
     AppType,
-    SectionSpec,
-    SectionType,
+    DesignPreferences,
     FieldSpec,
     FieldType,
     KPISpec,
-    ActionSpec,
-    DesignPreferences,
+    SectionSpec,
+    SectionType,
 )
-from core.blueprint import Blueprint, AppType as BlueprintAppType
+from core.blueprint import AppType as BlueprintAppType
+from core.blueprint import Blueprint
 from core.compiler.app_spec_to_blueprint import compile_app_spec
 from core.compiler.region_templates.base import FormulaInjectionError
 from core.validator.schema import BlueprintValidator
@@ -21,17 +22,32 @@ def test_compile_pos():
         app_type=AppType.POS,
         title="POS App",
         description="A Point of Sale application",
-        design=DesignPreferences(palette="ocean", font="modern", style_preset="bold", emoji_enabled=True),
+        design=DesignPreferences(
+            palette="ocean", font="modern", style_preset="bold", emoji_enabled=True
+        ),
         sections=[
             SectionSpec(
                 section_id="details",
                 title="Transaction Details",
                 section_type=SectionType.INPUT_FORM,
                 fields=[
-                    FieldSpec(name="Product", field_type=FieldType.DROPDOWN, options=["Coffee", "Tea"]),
-                    FieldSpec(name="Quantity", field_type=FieldType.NUMBER, default_value=1, validation_rule=">=1"),
+                    FieldSpec(
+                        name="Product",
+                        field_type=FieldType.DROPDOWN,
+                        options=["Coffee", "Tea"],
+                    ),
+                    FieldSpec(
+                        name="Quantity",
+                        field_type=FieldType.NUMBER,
+                        default_value=1,
+                        validation_rule=">=1",
+                    ),
                     FieldSpec(name="Price", field_type=FieldType.CURRENCY, default_value=2.50),
-                    FieldSpec(name="Total", field_type=FieldType.FORMULA, formula="=Quantity * Price"),
+                    FieldSpec(
+                        name="Total",
+                        field_type=FieldType.FORMULA,
+                        formula="=Quantity * Price",
+                    ),
                 ],
             )
         ],
@@ -40,12 +56,12 @@ def test_compile_pos():
     assert isinstance(blueprint, Blueprint)
     assert blueprint.meta.app_type == BlueprintAppType.POS
     assert blueprint.meta.title == "POS App"
-    
+
     # Verify the formula got resolved to A1 reference
     # Quantity will be B6, Price will be B7, Total is formula in B8 which resolves to =B6 * B7
     total_cell = next(c for c in blueprint.cells if c.cell_id == "B8")
     assert total_cell.formula == "=B6 * B7"
-    
+
     # Validate the generated blueprint using BlueprintValidator
     validator = BlueprintValidator()
     validated = validator.validate(blueprint.model_dump_json())
@@ -57,7 +73,9 @@ def test_compile_dashboard():
         app_type=AppType.DASHBOARD,
         title="Sales Dashboard",
         description="A Sales Dashboard",
-        design=DesignPreferences(palette="sunset", font="modern", style_preset="minimal", emoji_enabled=False),
+        design=DesignPreferences(
+            palette="sunset", font="modern", style_preset="minimal", emoji_enabled=False
+        ),
         sections=[
             SectionSpec(
                 section_id="sales_table",
@@ -72,13 +90,17 @@ def test_compile_dashboard():
             )
         ],
         kpis=[
-            KPISpec(label="Total Sales", formula="SUM(sales_table.Amount)", format_hint="currency")
+            KPISpec(
+                label="Total Sales",
+                formula="SUM(sales_table.Amount)",
+                format_hint="currency",
+            )
         ],
     )
     blueprint = compile_app_spec(spec)
     assert isinstance(blueprint, Blueprint)
     assert blueprint.meta.app_type == BlueprintAppType.DASHBOARD
-    
+
     # sales_table fields: Date in col 1, Amount in col 2.
     # Header row is row 7.
     # Repeat count 3: rows 8, 9, 10.
@@ -86,7 +108,7 @@ def test_compile_dashboard():
     # KPI formula should be =SUM(B8:B10)
     kpi_val_cell = next(c for c in blueprint.cells if c.cell_id == "B4")
     assert kpi_val_cell.formula == "=SUM(B8:B10)"
-    
+
     # Validate the generated blueprint
     validator = BlueprintValidator()
     validated = validator.validate(blueprint.model_dump_json())
@@ -98,7 +120,9 @@ def test_compile_invoice():
         app_type=AppType.INVOICE,
         title="Invoice App",
         description="Generate invoices",
-        design=DesignPreferences(palette="corporate", font="classic", style_preset="professional", emoji_enabled=True),
+        design=DesignPreferences(
+            palette="corporate", font="classic", style_preset="professional", emoji_enabled=True
+        ),
         sections=[
             SectionSpec(
                 section_id="client_info",
@@ -126,7 +150,11 @@ def test_compile_invoice():
                 title="Summary",
                 section_type=SectionType.SUMMARY,
                 fields=[
-                    FieldSpec(name="Subtotal", field_type=FieldType.FORMULA, formula="SUM(items.Amount)"),
+                    FieldSpec(
+                        name="Subtotal",
+                        field_type=FieldType.FORMULA,
+                        formula="SUM(items.Amount)",
+                    ),
                 ],
             )
         ],
@@ -134,7 +162,7 @@ def test_compile_invoice():
     blueprint = compile_app_spec(spec)
     assert isinstance(blueprint, Blueprint)
     assert blueprint.meta.app_type == BlueprintAppType.INVOICE
-    
+
     # Validate the generated blueprint
     validator = BlueprintValidator()
     validated = validator.validate(blueprint.model_dump_json())
@@ -153,7 +181,11 @@ def test_compile_tracker_fallback():
                 section_type=SectionType.DATA_TABLE,
                 fields=[
                     FieldSpec(name="Task Name", field_type=FieldType.TEXT),
-                    FieldSpec(name="Status", field_type=FieldType.DROPDOWN, options=["Todo", "Done"]),
+                    FieldSpec(
+                        name="Status",
+                        field_type=FieldType.DROPDOWN,
+                        options=["Todo", "Done"],
+                    ),
                 ],
             )
         ],
@@ -176,7 +208,11 @@ def test_compile_formula_injection_prevention():
                 section_type=SectionType.INPUT_FORM,
                 fields=[
                     FieldSpec(name="Product", field_type=FieldType.DROPDOWN, options=["Coffee"]),
-                    FieldSpec(name="Link", field_type=FieldType.FORMULA, formula='=HYPERLINK("http://evil.com", "Click")'),
+                    FieldSpec(
+                        name="Link",
+                        field_type=FieldType.FORMULA,
+                        formula='=HYPERLINK("http://evil.com", "Click")',
+                    ),
                 ],
             )
         ],

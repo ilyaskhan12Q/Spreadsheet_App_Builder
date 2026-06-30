@@ -1,19 +1,19 @@
-from dataclasses import dataclass, field
 import json
-from typing import Any, Dict, List
+from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
 class SpreadsheetContext:
     used_range: str = "A1"
-    headers: List[str] = field(default_factory=list)
-    data_sample: List[Dict[str, Any]] = field(default_factory=list)
-    named_ranges: Dict[str, str] = field(default_factory=dict)
-    existing_styles: Dict[str, Any] = field(default_factory=dict)
-    sheet_names: List[str] = field(default_factory=list)
+    headers: list[str] = field(default_factory=list)
+    data_sample: list[dict[str, Any]] = field(default_factory=list)
+    named_ranges: dict[str, str] = field(default_factory=dict)
+    existing_styles: dict[str, Any] = field(default_factory=dict)
+    sheet_names: list[str] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SpreadsheetContext":
+    def from_dict(cls, data: dict[str, Any]) -> "SpreadsheetContext":
         """
         Build a SpreadsheetContext from a dictionary, ensuring type alignment.
         """
@@ -58,6 +58,6 @@ class ContextScanner:
         # Currently returns a clean default context.
         if not spreadsheet_handle:
             return SpreadsheetContext()
-            
+
         # Optional parsing/extraction logic could go here
         return SpreadsheetContext()

@@ -1,19 +1,18 @@
-import json
 import os
-import pytest
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
-from core.blueprint import Blueprint
-from core.validator.schema import BlueprintValidator
+import pytest
+
 from adapters.uno.renderer import UNOAdapter
 from adapters.uno.style_mapper import hex_to_uno_color
+from core.validator.schema import BlueprintValidator
 
 
 @pytest.fixture
 def pos_blueprint():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     fixture_path = os.path.join(current_dir, "fixtures", "pos_blueprint.json")
-    with open(fixture_path, "r") as f:
+    with open(fixture_path) as f:
         raw_json = f.read()
     validator = BlueprintValidator()
     return validator.validate(raw_json)
@@ -24,16 +23,16 @@ def test_uno_renderer_all_calls(pos_blueprint):
     mock_doc = MagicMock()
     mock_controller = MagicMock()
     mock_sheet = MagicMock()
-    
+
     # Configure controller and sheet relationships
     mock_doc.getCurrentController.return_value = mock_controller
     mock_controller.getActiveSheet.return_value = mock_sheet
-    
+
     # Mock cells and columns
     mock_cells = {}
     mock_cols = {}
     mock_rows = {}
-    
+
     def get_cell_side_effect(name):
         if name not in mock_cells:
             cell = MagicMock()
@@ -48,34 +47,34 @@ def test_uno_renderer_all_calls(pos_blueprint):
             cell.Validation = mock_validation
             mock_cells[name] = cell
         return mock_cells[name]
-        
+
     def get_col_side_effect(name):
         if name not in mock_cols:
             mock_cols[name] = MagicMock()
         return mock_cols[name]
-        
+
     def get_row_side_effect(idx):
         if idx not in mock_rows:
             mock_rows[idx] = MagicMock()
         return mock_rows[idx]
-        
+
     mock_sheet.getCellRangeByName.side_effect = get_cell_side_effect
     mock_sheet.getColumns().getByName.side_effect = get_col_side_effect
     mock_sheet.getRows().getByIndex.side_effect = get_row_side_effect
-    
+
     # Instantiate adapter and render
     adapter = UNOAdapter()
     adapter.render(pos_blueprint, mock_doc)
-    
+
     # Assert Gridlines set
     # pos_blueprint has hide_gridlines = false, so ShowGrid should be True
     assert mock_controller.ShowGrid is True
-    
+
     # Assert Col Widths set
     # col_widths: "A": 15.0, "B": 20.0
     mock_sheet.getColumns().getByName.assert_any_call("A")
     mock_sheet.getColumns().getByName.assert_any_call("B")
-    
+
     # Width should be int(width * 35.278)
     # A width: 15 * 35.278 = 529
     # B width: 20 * 35.278 = 705
@@ -102,12 +101,12 @@ def test_uno_renderer_all_calls(pos_blueprint):
     # Assert Cell Styles Mapping
     # Cell A1 styling: bg_color: "#1A237E" (indigo), fg_color: "#FFFFFF", font_size: 16.0, bold: True, h_align: center
     cell_a1 = mock_cells["A1"]
-    
+
     # Check calls to setPropertyValue
     # bg_color = "#1A237E" -> hex_to_uno_color -> 1713022 (0x1A237E)
     expected_bg = hex_to_uno_color("#1A237E")
     expected_fg = hex_to_uno_color("#FFFFFF")
-    
+
     cell_a1.setPropertyValue.assert_any_call("CellBackColor", expected_bg)
     cell_a1.setPropertyValue.assert_any_call("CharColor", expected_fg)
     cell_a1.setPropertyValue.assert_any_call("CharHeight", 16.0)

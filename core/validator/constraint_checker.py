@@ -1,5 +1,5 @@
 import re
-from typing import Tuple
+
 from core.blueprint import Blueprint
 
 
@@ -8,39 +8,39 @@ class LayoutConflictError(ValueError):
     pass
 
 
-def parse_cell_id(cell_id: str) -> Tuple[int, int]:
+def parse_cell_id(cell_id: str) -> tuple[int, int]:
     """Parse cell reference (e.g., 'A1', 'Sheet1!B5') into (row, col) index (1-based)."""
     # Strip sheet prefix if present
     if "!" in cell_id:
         cell_id = cell_id.split("!")[-1]
-    
+
     match = re.match(r"^([A-Z]+)([0-9]+)$", cell_id.upper())
     if not match:
         raise LayoutConflictError(f"Invalid cell reference format: '{cell_id}'")
-    
+
     col_str, row_str = match.groups()
     row = int(row_str)
-    
+
     col = 0
     for char in col_str:
         col = col * 26 + (ord(char) - ord('A') + 1)
-    
+
     return row, col
 
 
-def parse_range(range_str: str) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+def parse_range(range_str: str) -> tuple[tuple[int, int], tuple[int, int]]:
     """Parse range (e.g., 'A1:C3') into ((start_row, start_col), (end_row, end_col))."""
     if "!" in range_str:
         range_str = range_str.split("!")[-1]
-    
+
     if ":" not in range_str:
         r, c = parse_cell_id(range_str)
         return (r, c), (r, c)
-    
+
     parts = range_str.split(":")
     if len(parts) != 2:
         raise LayoutConflictError(f"Invalid range format: '{range_str}'")
-    
+
     start_cell, end_cell = parts
     return parse_cell_id(start_cell), parse_cell_id(end_cell)
 
@@ -61,13 +61,13 @@ def check_bounds(blueprint: Blueprint, max_row: int = 1000, max_col: int = 50) -
         rows, cols = region.size
         end_row = r + rows - 1
         end_col = c + cols - 1
-        
+
         if r <= 0 or c <= 0 or end_row > max_row or end_col > max_col:
             raise LayoutConflictError(
                 f"Region {region.region_id} (anchor: {region.anchor}, size: {region.size}) exceeds boundaries. "
                 f"Bottom-right cell ({end_row}, {end_col}) must be in bounds."
             )
-        
+
         for cell_id in region.cell_ids:
             cr, cc = parse_cell_id(cell_id)
             if cr < r or cr > end_row or cc < c or cc > end_col:

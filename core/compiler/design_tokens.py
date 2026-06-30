@@ -12,10 +12,8 @@ No AI involvement — this is pure deterministic mapping.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from core.app_spec import AppType, DesignPreferences
-
 
 # ---------------------------------------------------------------------------
 # Palette definitions — role-based hex colors

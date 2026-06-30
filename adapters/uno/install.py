@@ -18,10 +18,10 @@ def install_sab_macros() -> None:
     and registers it in the 'Standard' Basic library.
     """
     home = Path.home()
-    
+
     # Standard LibreOffice user profile path for Linux
     lo_profile = home / ".config" / "libreoffice" / "4" / "user"
-    
+
     # Check if LibreOffice profile directory exists. If not, print fallback warning.
     if not lo_profile.exists():
         # Try finding any folder matching libreoffice in config
@@ -43,13 +43,13 @@ def install_sab_macros() -> None:
 
     # 2. Register module in script.xlb
     xlb_file = standard_lib / "script.xlb"
-    
+
     if xlb_file.exists():
         # Update existing script.xlb
         try:
             tree = ET.parse(xlb_file)
             root = tree.getroot()
-            
+
             # Check if SAB_Helper already registered
             elements = [elem.get("{http://openoffice.org/2000/script}element") for elem in root.findall(".//{http://openoffice.org/2000/script}library-index")]
             # Handle elements without namespaces
@@ -77,18 +77,18 @@ def install_sab_macros() -> None:
 def create_default_xlb(xlb_path: Path) -> None:
     ns = "http://openoffice.org/2000/script"
     ET.register_namespace('script', ns)
-    
+
     root = ET.Element(f"{{{ns}}}library-document", {
         f"{{{ns}}}name": "Standard",
         f"{{{ns}}}readonly": "false",
         f"{{{ns}}}passwordporting": "false"
     })
-    
+
     elem = ET.Element(f"{{{ns}}}library-index", {
         f"{{{ns}}}element": "SAB_Helper"
     })
     root.append(elem)
-    
+
     tree = ET.ElementTree(root)
     tree.write(xlb_path, xml_declaration=True, encoding="utf-8")
     print(f"Created and registered SAB_Helper in new script.xlb at: {xlb_path}")

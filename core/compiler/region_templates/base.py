@@ -10,22 +10,17 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any
 
-from core.app_spec import FieldSpec, FieldType, SectionSpec
+from core.app_spec import FieldSpec, FieldType
 from core.blueprint import (
     BorderStyle,
-    Cell,
     CellStyle,
     HAlign,
-    MergeConfig,
-    Region,
     RegionType,
-    VAlign,
     Validation,
+    VAlign,
 )
-from core.compiler.design_tokens import ResolvedTokens, resolve_format_hint
-
+from core.compiler.design_tokens import ResolvedTokens
 
 # ---------------------------------------------------------------------------
 # Coordinate helpers

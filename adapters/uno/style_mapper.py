@@ -1,11 +1,15 @@
-from typing import Any, Dict, Optional
-from core.blueprint import CellStyle, BorderStyle, HAlign, VAlign
+from typing import Any
+
+from core.blueprint import BorderStyle, CellStyle, HAlign, VAlign
 
 try:
     import uno  # type: ignore
-    from com.sun.star.awt import FontWeight, FontSlant  # type: ignore
-    from com.sun.star.table import CellHJustify, CellVJustify  # type: ignore
-    from com.sun.star.table import BorderLine2  # type: ignore
+    from com.sun.star.awt import FontSlant, FontWeight  # type: ignore
+    from com.sun.star.table import (  # type: ignore
+        BorderLine2,  # type: ignore
+        CellHJustify,
+        CellVJustify,
+    )
     UNO_AVAILABLE = True
 except ImportError:
     # Fallback to constants for unit tests without UNO environment
@@ -41,7 +45,7 @@ except ImportError:
     UNO_AVAILABLE = False
 
 
-def hex_to_uno_color(hex_str: Optional[str]) -> Optional[int]:
+def hex_to_uno_color(hex_str: str | None) -> int | None:
     """Convert hex string (e.g. '#FF0000' or '#FFF') to UNO color integer."""
     if not hex_str:
         return None
@@ -70,7 +74,7 @@ def get_border_line(border_style: BorderStyle, color_int: int = 0) -> Any:
         line = BorderLine2()
 
     line.Color = color_int
-    
+
     if border_style == BorderStyle.THIN:
         line.OuterLineWidth = 10
     elif border_style == BorderStyle.MEDIUM:
@@ -89,15 +93,15 @@ def get_border_line(border_style: BorderStyle, color_int: int = 0) -> Any:
         line.OuterLineWidth = 10
         # LineStyle 3 represents dotted in com.sun.star.table.BorderLineStyle
         line.LineStyle = 3
-    
+
     return line
 
 
-def map_cell_style(style: CellStyle) -> Dict[str, Any]:
+def map_cell_style(style: CellStyle) -> dict[str, Any]:
     """
     Maps a blueprint CellStyle to a dictionary of UNO properties/attributes.
     """
-    uno_props: Dict[str, Any] = {}
+    uno_props: dict[str, Any] = {}
 
     # Background and Text Color
     if style.bg_color:
@@ -131,7 +135,7 @@ def map_cell_style(style: CellStyle) -> Dict[str, Any]:
     # Border properties (each side)
     # Note: LibreOffice cells support TopBorder, BottomBorder, LeftBorder, RightBorder properties
     text_color_int = hex_to_uno_color(style.fg_color) or 0
-    
+
     if style.border_top != BorderStyle.NONE:
         uno_props["TopBorder"] = get_border_line(style.border_top, text_color_int)
     if style.border_bottom != BorderStyle.NONE:
