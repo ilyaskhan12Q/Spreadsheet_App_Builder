@@ -2,20 +2,23 @@
 core/pipeline.py — Full orchestration pipeline for SAB.
 
 Pipeline stages:
-    1. ContextScanner   → SpreadsheetContext
-    2. AITranslator     → raw JSON blueprint string
-    3. BlueprintValidator → Blueprint (Pydantic model)
-    4. Adapter.render()  → side-effects on the spreadsheet
+    1. ContextScanner     → SpreadsheetContext
+    2. AITranslator       → raw JSON AppSpec string
+    3. Compiler & Validate → Blueprint (Pydantic model)
+    4. Adapter.render()    → side-effects on the spreadsheet
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any, Literal
 
-from core.blueprint import Blueprint
-from core.scanner.context_builder import ContextScanner, SpreadsheetContext
-from core.ai.translator import AITranslator, TranslationError
-from core.validator.schema import BlueprintValidator
 from adapters.uno.renderer import UNOAdapter
+from core.ai.translator import AITranslator, TranslationError
+from core.app_spec import AppSpec
+from core.blueprint import Blueprint
+from core.compiler.app_spec_to_blueprint import compile_app_spec
+from core.scanner.context_builder import ContextScanner, SpreadsheetContext
+from core.validator.schema import BlueprintValidator
+from renderers.xlsx_writer import XlsxRenderer
 
 logger = logging.getLogger("sab.pipeline")
 
@@ -29,9 +32,9 @@ class PipelineResult:
     """Carries the artefacts produced at each stage."""
 
     def __init__(self) -> None:
-        self.context: Optional[SpreadsheetContext] = None
-        self.raw_json: Optional[str] = None
-        self.blueprint: Optional[Blueprint] = None
+        self.context: SpreadsheetContext | None = None
+        self.raw_json: str | None = None
+        self.blueprint: Blueprint | None = None
         self.rendered: bool = False
 
     def __repr__(self) -> str:
@@ -43,9 +46,9 @@ def run(
     prompt: str,
     *,
     api_key: str,
-    provider: str = "claude",
-    model: Optional[str] = None,
-    adapter_name: str = "uno",
+    provider: Literal["claude", "gemini", "openai"] = "claude",
+    model: str | None = None,
+    adapter_name: str = "xlsx",
     spreadsheet_handle: Any = None,
     validate_only: bool = False,
 ) -> PipelineResult:
@@ -58,11 +61,11 @@ def run(
         Natural-language description of the spreadsheet app.
     api_key : str
         Provider API key.
-    provider : {"claude", "gemini"}
+    provider : {"claude", "gemini", "openai"}
         Which AI provider to use.
     model : str, optional
         Override the default model for the selected provider.
-    adapter_name : {"uno", "officejs"}
+    adapter_name : {"xlsx", "uno", "officejs"}
         Which rendering adapter to use.
     spreadsheet_handle : Any, optional
         An open document object (UNO XComponent) passed to the renderer.
@@ -88,11 +91,21 @@ def run(
     except TranslationError as exc:
         raise PipelineError(f"Translation stage failed: {exc}") from exc
 
-    # ── Stage 3: Validate ──────────────────────────────────────────────
-    logger.info("Stage 3/4 — Validating blueprint")
+    # ── Stage 3: Parse, Compile, and Validate ──────────────────────────
+    logger.info("Stage 3/4 — Parsing, compiling and validating blueprint")
+    try:
+        app_spec = AppSpec.model_validate_json(result.raw_json)
+    except Exception as exc:
+        raise PipelineError(f"Failed to parse AI output as AppSpec JSON: {exc}") from exc
+
+    try:
+        compiled_blueprint = compile_app_spec(app_spec)
+    except Exception as exc:
+        raise PipelineError(f"AppSpec compilation failed: {exc}") from exc
+
     validator = BlueprintValidator()
     try:
-        result.blueprint = validator.validate(result.raw_json)
+        result.blueprint = validator.validate_blueprint(compiled_blueprint)
     except Exception as exc:
         raise PipelineError(f"Validation stage failed: {exc}") from exc
 
@@ -109,6 +122,16 @@ def run(
             result.rendered = True
         except Exception as exc:
             raise PipelineError(f"UNO render stage failed: {exc}") from exc
+
+    elif adapter_name == "xlsx":
+        renderer = XlsxRenderer()
+        try:
+            # If spreadsheet_handle is a string, assume it's the save_path
+            save_path = spreadsheet_handle if isinstance(spreadsheet_handle, str) else "output.xlsx"
+            renderer.render(result.blueprint, save_path=save_path)
+            result.rendered = True
+        except Exception as exc:
+            raise PipelineError(f"XLSX render stage failed: {exc}") from exc
 
     elif adapter_name == "officejs":
         # Office.js rendering happens client-side in the React task pane;

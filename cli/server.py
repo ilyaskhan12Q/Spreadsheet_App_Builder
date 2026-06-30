@@ -1,14 +1,14 @@
 import os
+from typing import Any, Literal, cast
+
 import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Literal
-from dotenv import load_dotenv
 
-from core.scanner.context_builder import ContextScanner
-from core.ai.translator import AITranslator, describe_provider_setup, resolve_provider_api_key
-from core.validator.schema import BlueprintValidator
+from core.ai.translator import describe_provider_setup, resolve_provider_api_key
+from core.pipeline import run as run_pipeline
 
 load_dotenv()
 
@@ -26,57 +26,61 @@ app.add_middleware(
 
 class BuildRequest(BaseModel):
     prompt: str
-    provider: Literal["claude", "gemini"] = os.getenv("SAB_AI_PROVIDER", "claude")
+    provider: Literal["claude", "gemini", "openai"] = os.getenv("SAB_AI_PROVIDER", "claude")  # type: ignore[assignment]
     model: str | None = None
     api_key: str | None = None
 
 
 @app.post("/api/build")
-async def build(req: BuildRequest):
+async def build(req: BuildRequest) -> dict[str, Any]:
     """
-    Accepts prompt, queries AITranslator, validates, and returns the Blueprint JSON.
+    Accepts prompt, queries AITranslator, validates, compiles, and returns the Blueprint JSON.
     """
     api_key = req.api_key
     if not api_key:
         if req.provider == "gemini":
-            api_key = os.getenv("SAB_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+            api_key = (
+                os.getenv("SAB_GEMINI_API_KEY")
+                or os.getenv("GEMINI_API_KEY")
+                or os.getenv("GOOGLE_API_KEY")
+            )
+        elif req.provider == "openai":
+            api_key = os.getenv("SAB_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
         else:
             api_key = os.getenv("SAB_ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+
     if not api_key:
         raise HTTPException(
             status_code=500,
             detail=f"No API key configured for provider {req.provider!r}."
         )
 
-    # 1. Scanner Context
-    scanner = ContextScanner()
-    context = scanner.build_context()
-
-    # 2. Translate Prompt to JSON Blueprint
-    translator = AITranslator(api_key=api_key, provider=req.provider, model=req.model)
     try:
-        raw_json = translator.translate(req.prompt, context)
-    except Exception as e:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Translation failed: {e}"
+        result = run_pipeline(
+            prompt=req.prompt,
+            api_key=api_key,
+            provider=req.provider,
+            model=req.model,
+            validate_only=True,
         )
-
-    # 3. Validate Blueprint Constraints
-    validator = BlueprintValidator()
-    try:
-        blueprint = validator.validate(raw_json)
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail=f"Blueprint validation failed: {e}"
+            detail=f"Pipeline execution failed: {e}"
         )
 
-    return {"blueprint": blueprint.model_dump()}
+    if not result.blueprint:
+        raise HTTPException(
+            status_code=500,
+            detail="Pipeline failed to produce a valid blueprint."
+        )
+
+    return {"blueprint": result.blueprint.model_dump()}
 
 
-def start():
-    provider = os.getenv("SAB_AI_PROVIDER", "claude")
+def start() -> None:
+    provider_str = os.getenv("SAB_AI_PROVIDER", "claude")
+    provider = cast(Literal["claude", "gemini", "openai"], provider_str)
     api_key, _ = resolve_provider_api_key(provider)
     print(describe_provider_setup(provider, api_key))
     uvicorn.run("cli.server:app", host="0.0.0.0", port=8000, reload=True)

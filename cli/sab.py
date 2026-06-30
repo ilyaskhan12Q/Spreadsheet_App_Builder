@@ -1,30 +1,36 @@
+import json
+import logging
 import os
 import sys
-import json
+from typing import Any, Literal, cast
+
 import click
-import logging
-from typing import Optional
 from dotenv import load_dotenv
 
-from core.scanner.context_builder import ContextScanner
-from core.ai.translator import AITranslator, describe_provider_setup
-from core.validator.schema import BlueprintValidator
+from core.ai.translator import describe_provider_setup
+from core.pipeline import run as run_pipeline
 
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("sab.cli")
 
 
-def connect_uno(port: int):
+def connect_uno(port: int) -> Any:
     """
     Establishes connection to a running LibreOffice instance via UNO socket.
     """
     try:
         import uno  # type: ignore
     except ImportError:
-        click.echo("Error: Python 'uno' module not found. Please install python3-uno package.", err=True)
+        click.echo(
+            "Error: Python 'uno' module not found. Please install python3-uno package.",
+            err=True
+        )
         sys.exit(1)
 
     try:
@@ -32,87 +38,144 @@ def connect_uno(port: int):
         resolver = local_context.ServiceManager.createInstanceWithContext(
             "com.sun.star.bridge.UnoUrlResolver", local_context
         )
-        ctx = resolver.resolve(f"uno:socket,host=localhost,port={port};urp;StarOffice.ComponentContext")
+        ctx = resolver.resolve(
+            f"uno:socket,host=localhost,port={port};urp;StarOffice.ComponentContext"
+        )
         smgr = ctx.ServiceManager
         desktop = smgr.createInstanceWithContext("com.sun.star.frame.Desktop", ctx)
         doc = desktop.getCurrentComponent()
         if not doc:
-            click.echo("Error: Connected to LibreOffice, but no active document was found.", err=True)
+            click.echo(
+                "Error: Connected to LibreOffice, but no active document was found.",
+                err=True
+            )
             sys.exit(1)
         return doc
     except Exception as e:
         click.echo(f"Error connecting to LibreOffice on port {port}: {e}", err=True)
         click.echo("Please start LibreOffice with socket listening active: ", err=True)
-        click.echo(f"libreoffice --calc --accept=\"socket,host=localhost,port={port};urp;StarOffice.ComponentContext\"", err=True)
+        click.echo(
+            f"libreoffice --calc --accept=\"socket,host=localhost,port={port};"
+            "urp;StarOffice.ComponentContext\"",
+            err=True
+        )
         sys.exit(1)
 
 
 @click.group()
-def cli():
+def cli() -> None:
     """Spreadsheet App Builder (SAB) open-source engine CLI."""
     pass
 
 
 @cli.command()
 @click.argument("prompt")
-@click.option("--adapter", type=click.Choice(["uno", "officejs"]), default="uno", show_default=True, help="The renderer adapter to use.")
-@click.option("--provider", type=click.Choice(["claude", "gemini"]), default=os.getenv("SAB_AI_PROVIDER", "claude"), show_default=True, help="The AI provider to use.")
+@click.option(
+    "--adapter",
+    type=click.Choice(["xlsx", "uno", "officejs"]),
+    default="xlsx",
+    show_default=True,
+    help="The renderer adapter to use."
+)
+@click.option(
+    "--provider",
+    type=click.Choice(["claude", "gemini", "openai"]),
+    default=os.getenv("SAB_AI_PROVIDER", "claude"),
+    show_default=True,
+    help="The AI provider to use."
+)
 @click.option("--api-key", help="Override the provider API key.")
 @click.option("--model", help="Override the provider model.")
-@click.option("--validate-only", is_flag=True, help="Validate and output the generated blueprint JSON only, skip rendering.")
-@click.option("--port", type=int, default=2002, help="The port LibreOffice Calc socket is listening on.")
-def build(prompt: str, adapter: str, provider: str, api_key: Optional[str], model: Optional[str], validate_only: bool, port: int):
+@click.option(
+    "--validate-only",
+    is_flag=True,
+    help="Validate and output the generated blueprint JSON only, skip rendering."
+)
+@click.option(
+    "--port",
+    type=int,
+    default=2002,
+    help="The port LibreOffice Calc socket is listening on."
+)
+@click.option(
+    "--output",
+    "-o",
+    default="output.xlsx",
+    help="The output filepath for the xlsx adapter."
+)
+def build(
+    prompt: str,
+    adapter: str,
+    provider: str,
+    api_key: str | None,
+    model: str | None,
+    validate_only: bool,
+    port: int,
+    output: str,
+) -> None:
     """Generates and renders a spreadsheet application from a text PROMPT."""
-    # 1. Scanning
-    click.echo("Scanning context...")
-    scanner = ContextScanner()
-    # Create an empty/fresh context for new builds
-    context = scanner.build_context()
+    # Resolve API Key
+    resolved_provider = cast(Literal["claude", "gemini", "openai"], provider)
+    if not api_key:
+        if resolved_provider == "gemini":
+            api_key = (
+                os.getenv("SAB_GEMINI_API_KEY")
+                or os.getenv("GEMINI_API_KEY")
+                or os.getenv("GOOGLE_API_KEY")
+            )
+        elif resolved_provider == "openai":
+            api_key = os.getenv("SAB_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+        else:
+            api_key = os.getenv("SAB_ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
 
-    # 2. Translating
-    click.echo(describe_provider_setup(provider, api_key))
-    click.echo(f"Translating prompt using {provider.title()}...")
-    translator = AITranslator(api_key=api_key, provider=provider, model=model)
-    try:
-        raw_blueprint_json = translator.translate(prompt, context)
-    except Exception as e:
-        click.echo(f"Translation failed: {e}", err=True)
+    if not api_key:
+        click.echo(
+            f"Error: No API key found for provider {resolved_provider}.",
+            err=True
+        )
         sys.exit(1)
 
-    # 3. Validating
-    click.echo("Validating blueprint...")
-    validator = BlueprintValidator()
+    # 1. Connected document or output path
+    handle: Any = None
+    if not validate_only:
+        if adapter == "uno":
+            click.echo(f"Connecting to LibreOffice Calc on port {port}...")
+            handle = connect_uno(port)
+        elif adapter == "xlsx":
+            handle = output
+
+    # 2. Setup message
+    click.echo(describe_provider_setup(resolved_provider, api_key))
+    click.echo(f"Running pipeline using {resolved_provider.title()}...")
+
+    # 3. Execute Pipeline
     try:
-        blueprint = validator.validate(raw_blueprint_json)
+        result = run_pipeline(
+            prompt=prompt,
+            api_key=api_key,
+            provider=resolved_provider,
+            model=model,
+            adapter_name=adapter,
+            spreadsheet_handle=handle,
+            validate_only=validate_only,
+        )
     except Exception as e:
-        click.echo(f"Validation failed: {e}", err=True)
+        click.echo(f"Pipeline failed: {e}", err=True)
         sys.exit(1)
 
-    # 4. Handle Output
-    if validate_only:
-        click.echo("\n--- Blueprint JSON ---")
-        click.echo(json.dumps(blueprint.model_dump(), indent=2))
-        sys.exit(0)
-
-    # 5. Rendering
-    if adapter == "uno":
-        click.echo(f"Connecting to LibreOffice Calc on port {port}...")
-        doc = connect_uno(port)
-        
-        click.echo("Rendering blueprint using UNO adapter...")
-        from adapters.uno.renderer import UNOAdapter
-        uno_adapter = UNOAdapter()
-        try:
-            uno_adapter.render(blueprint, doc)
+    # 4. Output / Print results
+    if result.blueprint:
+        if validate_only:
+            click.echo("\n--- Blueprint JSON ---")
+            click.echo(json.dumps(result.blueprint.model_dump(), indent=2))
+        elif adapter == "officejs":
+            click.echo(
+                "Note: The Office.js adapter rendering is run from the React Task Pane UI."
+            )
+            click.echo("The compiled blueprint is printed below:")
+            click.echo(json.dumps(result.blueprint.model_dump(), indent=2))
+        else:
             click.echo("Successfully rendered application!")
-        except Exception as e:
-            click.echo(f"Rendering failed: {e}", err=True)
-            sys.exit(1)
-            
-    elif adapter == "officejs":
-        click.echo("Note: The Office.js adapter rendering is run from the React Task Pane UI.")
-        click.echo("The compiled blueprint is printed below for manual loading if needed:")
-        click.echo(json.dumps(blueprint.model_dump(), indent=2))
 
 
 if __name__ == "__main__":
