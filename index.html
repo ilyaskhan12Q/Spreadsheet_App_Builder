@@ -417,7 +417,13 @@
         <p style="font-size: 0.75rem; color: var(--text-muted);">Spreadsheet App Builder</p>
       </div>
     </div>
-    <div class="version-tag">v0.2.0 Engine</div>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <div class="version-tag">v0.2.0 Engine</div>
+      <div id="api-config-container" style="display: none; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.05); padding: 0.2rem 0.6rem; border-radius: 6px; border: 1px solid var(--border-color);">
+        <span style="font-size: 0.75rem; color: var(--text-muted);">API Server:</span>
+        <input type="text" id="api-url-input" style="width: 160px; font-size: 0.75rem; padding: 0.1rem 0.3rem; height: auto; background: transparent; border: none; color: #10b981;" placeholder="http://127.0.0.1:8000" />
+      </div>
+    </div>
   </header>
 
   <div class="container">
@@ -524,6 +530,36 @@
   </div>
 
   <script>
+    // Determine the API base URL dynamically
+    const getApiUrl = (path) => {
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return path;
+      }
+      const baseUrl = localStorage.getItem('sab_api_url') || 'http://127.0.0.1:8000';
+      return `${baseUrl.replace(/\/$/, '')}${path}`;
+    };
+
+    // Show API config input if running on a remote host (like GitHub Pages)
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        const configContainer = document.getElementById('api-config-container');
+        const urlInput = document.getElementById('api-url-input');
+        if (configContainer && urlInput) {
+          configContainer.style.display = 'flex';
+          urlInput.value = localStorage.getItem('sab_api_url') || 'http://127.0.0.1:8000';
+          urlInput.addEventListener('change', () => {
+            let val = urlInput.value.trim();
+            if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
+              val = 'http://' + val;
+            }
+            localStorage.setItem('sab_api_url', val);
+            urlInput.value = val;
+            logToConsole("API Base URL updated to: " + val);
+          });
+        }
+      }
+    });
+
     let activeBlueprint = null;
 
     const logToConsole = (msg) => {
@@ -727,7 +763,7 @@
 
         // Step 2: Translate via FastAPI Build
         logToConsole("Sending prompt details to AI Translation Server...");
-        const buildResp = await fetch("/api/build", {
+        const buildResp = await fetch(getApiUrl("/api/build"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -787,7 +823,7 @@
       if (!activeBlueprint) return;
       try {
         logToConsole("Rendering Excel workbook...");
-        const resp = await fetch("/api/render/xlsx", {
+        const resp = await fetch(getApiUrl("/api/render/xlsx"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ blueprint: activeBlueprint })
@@ -813,7 +849,7 @@
       if (!activeBlueprint) return;
       try {
         logToConsole("Opening workbook in ONLYOFFICE...");
-        const resp = await fetch("/api/render/onlyoffice", {
+        const resp = await fetch(getApiUrl("/api/render/onlyoffice"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ blueprint: activeBlueprint })
@@ -834,7 +870,7 @@
       if (!activeBlueprint) return;
       try {
         logToConsole("Rendering to LibreOffice Calc...");
-        const resp = await fetch("/api/render/uno", {
+        const resp = await fetch(getApiUrl("/api/render/uno"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ blueprint: activeBlueprint })
