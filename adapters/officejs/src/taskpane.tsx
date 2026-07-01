@@ -28,11 +28,55 @@ export const TaskPane: React.FC = () => {
     setStage('scanning');
 
     try {
-      // 1. Scan / fetch API
+      // 1. Scan workbook context using Office.js
+      let workbookContext: any = null;
+      try {
+        await Excel.run(async (context) => {
+          const sheets = context.workbook.worksheets;
+          sheets.load("items/name");
+          await context.sync();
+          const sheetNames = sheets.items.map((s) => s.name);
+
+          const activeSheet = sheets.getActiveWorksheet();
+          const usedRange = activeSheet.getUsedRange(true); // only cells with values
+          usedRange.load("address,values");
+          await context.sync();
+
+          const values = usedRange.values;
+          const headers = values.length > 0 ? values[0].map((v: any) => String(v)) : [];
+          const dataSample = values.slice(1, 5).map((row: any) => {
+            const dict: any = {};
+            headers.forEach((h, idx) => {
+              if (h) {
+                dict[h] = row[idx];
+              } else {
+                dict[`Column_${idx + 1}`] = row[idx];
+              }
+            });
+            return dict;
+          });
+
+          workbookContext = {
+            used_range: usedRange.address,
+            sheet_names: sheetNames,
+            headers: headers,
+            data_sample: dataSample,
+            existing_styles: {},
+            named_ranges: {}
+          };
+        });
+      } catch (scanErr) {
+        console.warn("Could not scan workbook context, continuing with empty context:", scanErr);
+      }
+
+      // 2. Fetch API with context
       const scanResponse = await fetch('http://localhost:8000/api/build', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ 
+          prompt,
+          context: workbookContext
+        })
       });
 
       if (!scanResponse.ok) {

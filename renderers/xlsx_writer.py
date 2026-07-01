@@ -87,6 +87,14 @@ class XlsxRenderer:
             for merge in blueprint.merges:
                 self.ws.merge_cells(merge.range)
 
+        # Named Ranges
+        if getattr(blueprint, 'named_ranges', None):
+            from openpyxl.workbook.defined_name import DefinedName
+            for nr in blueprint.named_ranges:
+                # Add to workbook defined names
+                dn = DefinedName(name=nr.name, attr_text=f"'{self.ws.title}'!{nr.range}")
+                self.wb.defined_names.add(dn)
+
         # Save or return bytes
         if save_path:
             self.wb.save(save_path)

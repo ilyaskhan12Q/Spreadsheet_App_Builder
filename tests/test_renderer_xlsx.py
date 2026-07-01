@@ -60,7 +60,7 @@ def test_xlsx_renderer_buffer_output(pos_blueprint):
         assert "D5:E5" in merges
 
         # Test 6: Styling
-        # Cell A1 styling: bg_color: "#1A237E" (indigo), fg_color: "#FFFFFF", 
+        # Cell A1 styling: bg_color: "#1A237E" (indigo), fg_color: "#FFFFFF",
         # font_size: 16.0, bold: True, h_align: center
         cell_a1 = ws["A1"]
         # color values could be in 'FFRRGGBB'

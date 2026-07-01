@@ -51,6 +51,7 @@ def run(
     adapter_name: str = "xlsx",
     spreadsheet_handle: Any = None,
     validate_only: bool = False,
+    context: SpreadsheetContext | None = None,
 ) -> PipelineResult:
     """
     Execute the full SAB pipeline end-to-end.
@@ -71,6 +72,8 @@ def run(
         An open document object (UNO XComponent) passed to the renderer.
     validate_only : bool
         When True, stop after validation — don't render.
+    context : SpreadsheetContext, optional
+        Pre-scanned workbook context to pass directly to the translator.
 
     Returns
     -------
@@ -80,8 +83,11 @@ def run(
 
     # ── Stage 1: Scan ──────────────────────────────────────────────────
     logger.info("Stage 1/4 — Scanning context")
-    scanner = ContextScanner()
-    result.context = scanner.build_context(spreadsheet_handle)
+    if context is not None:
+        result.context = context
+    else:
+        scanner = ContextScanner()
+        result.context = scanner.build_context(spreadsheet_handle)
 
     # ── Stage 2: Translate ─────────────────────────────────────────────
     logger.info("Stage 2/4 — Translating prompt via AI")

@@ -76,7 +76,7 @@ export class ExcelRenderer {
         if (cell.validation.type === 'list') {
           validation.rule = {
             list: {
-              inList: true,
+              inCellDropDown: true,
               source: cell.validation.formula1
             }
           };
@@ -96,6 +96,7 @@ export class ExcelRenderer {
           validation.errorAlert = {
             message: cell.validation.error_message,
             showAlert: true,
+            style: "Stop",
             title: "Data Validation Error"
           };
         }

@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAB Engine Dashboard - Spreadsheet App Builder</title>
+  <meta name="description" content="Build interactive spreadsheet apps from natural language prompts with real-time browser preview.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #070b13;
+      --panel-bg: rgba(13, 20, 38, 0.7);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --cyan-glow: #00f0ff;
+      --violet-glow: #8a2be2;
+      --accent: #3b82f6;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --font-family: 'Outfit', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.1) 0, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(138, 43, 226, 0.1) 0, transparent 50%);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    header {
+      backdrop-filter: blur(12px);
+      background: rgba(7, 11, 19, 0.8);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1.25rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-circle {
+      background: linear-gradient(135deg, var(--cyan-glow), var(--violet-glow));
+      border-radius: 50%;
+      width: 2.5rem;
+      height: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: #fff;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+      animation: spin 8s linear infinite;
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      background: linear-gradient(to right, #ffffff, #9ca3af);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .version-tag {
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 9999px;
+      color: #60a5fa;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+      padding: 1.5rem;
+      gap: 1.5rem;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .control-panel {
+      flex: 1;
+      max-width: 480px;
+    }
+
+    .preview-panel {
+      flex: 2;
+      min-width: 0; /* allows flex item to shrink below content size */
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    textarea {
+      background: rgba(7, 11, 19, 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.95rem;
+      min-height: 120px;
+      padding: 0.75rem;
+      resize: vertical;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--cyan-glow);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+    }
+
+    select, input[type="text"] {
+      background: rgba(7, 11, 19, 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.6rem 0.75rem;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+
+    select:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: var(--cyan-glow);
+    }
+
+    .switch-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.75rem;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: .4s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+
+    .btn {
+      background: linear-gradient(135deg, var(--cyan-glow), var(--violet-glow));
+      border: none;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.8rem 1.5rem;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn:hover {
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      box-shadow: none;
+    }
+
+    /* Steps Stepper */
+    .stepper {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      opacity: 0.4;
+      transition: all 0.3s ease;
+    }
+
+    .step-item.active {
+      opacity: 1;
+      color: var(--cyan-glow);
+    }
+
+    .step-item.completed {
+      opacity: 0.8;
+      color: #10b981;
+    }
+
+    .step-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* Live Spreadsheet Grid Preview */
+    .grid-container {
+      background: #111827;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      flex: 1;
+      overflow: auto;
+      position: relative;
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .spreadsheet-table {
+      border-collapse: collapse;
+      font-size: 13px;
+      color: #d1d5db;
+      table-layout: fixed;
+      width: max-content;
+      margin: 1.5rem;
+    }
+
+    .spreadsheet-table th, .spreadsheet-table td {
+      border: 1px solid #374151;
+      padding: 6px 12px;
+      min-width: 100px;
+      max-width: 300px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .spreadsheet-table th {
+      background: #1f2937;
+      color: #9ca3af;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .spreadsheet-table td.header-index {
+      background: #1f2937;
+      color: #9ca3af;
+      font-weight: 600;
+      text-align: center;
+      min-width: 50px;
+      width: 50px;
+    }
+
+    .cell-formula-indicator {
+      border-left: 3px solid #f59e0b !important;
+    }
+
+    .cell-validation-indicator {
+      border-bottom: 2px dashed #10b981 !important;
+    }
+
+    /* Action bar */
+    .action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
+    }
+
+    .console-panel {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: #34d399;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 0.75rem;
+      white-space: pre-wrap;
+    }
+
+    .error-box {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      color: #ef4444;
+      padding: 0.75rem;
+      display: none;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      color: var(--text-muted);
+    }
+
+    .empty-icon {
+      font-size: 3rem;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo-circle">S</div>
+      <div>
+        <h1>SAB Live Dashboard</h1>
+        <p style="font-size: 0.75rem; color: var(--text-muted);">Spreadsheet App Builder</p>
+      </div>
+    </div>
+    <div class="version-tag">v0.2.0 Engine</div>
+  </header>
+
+  <div class="container">
+    <!-- LEFT PANEL: CONTROLS -->
+    <div class="panel control-panel">
+      <div class="field-group">
+        <label for="prompt-input">Application Prompt</label>
+        <textarea id="prompt-input" placeholder="Describe the application you want (e.g. 'I want an app that can manage my grocery store, keep track of invoices, products, auto addition, subtraction, etc.')"></textarea>
+      </div>
+
+      <div class="field-group">
+        <label for="provider-select">AI Provider</label>
+        <select id="provider-select">
+          <option value="claude">Claude (Sonnet)</option>
+          <option value="gemini">Gemini (Flash)</option>
+          <option value="openai">OpenAI (GPT-4o)</option>
+        </select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+        <div class="field-group">
+          <label for="palette-select">Color Palette</label>
+          <select id="palette-select">
+            <option value="corporate" selected>Corporate (Blue/Navy)</option>
+            <option value="ocean">Ocean (Teal/Emerald)</option>
+            <option value="sunset">Sunset (Gold/Orange)</option>
+            <option value="forest">Forest (Green/Mint)</option>
+            <option value="monochrome">Monochrome (Slate/Gray)</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="style-select">Layout Style</label>
+          <select id="style-select">
+            <option value="professional" selected>Professional</option>
+            <option value="minimal">Minimal</option>
+            <option value="bold">Bold & Vibrant</option>
+            <option value="playful">Playful</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="switch-row">
+        <span>Enable Emojis</span>
+        <label class="switch">
+          <input type="checkbox" id="emoji-check" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <button id="generate-btn" class="btn">
+        <span>Generate Spreadsheet</span>
+      </button>
+
+      <div id="error-message" class="error-box"></div>
+      
+      <div class="field-group">
+        <label>System Console Logs</label>
+        <div id="console" class="console-panel">Ready. Enter prompt and build.</div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: PREVIEW & ACTIONS -->
+    <div class="panel preview-panel">
+      <div class="stepper">
+        <div class="step-item" id="step-scan">
+          <div class="step-dot"></div>
+          <span>1. Scan Context</span>
+        </div>
+        <div class="step-item" id="step-translate">
+          <div class="step-dot"></div>
+          <span>2. AI Translate</span>
+        </div>
+        <div class="step-item" id="step-validate">
+          <div class="step-dot"></div>
+          <span>3. Validate</span>
+        </div>
+        <div class="step-item" id="step-render">
+          <div class="step-dot"></div>
+          <span>4. Render Grid</span>
+        </div>
+      </div>
+
+      <div class="grid-container" id="grid-preview-container">
+        <div class="empty-state" id="empty-preview">
+          <div class="empty-icon">📊</div>
+          <h3>Grid Live Preview</h3>
+          <p>Describe your app and click Generate to see the live spreadsheet render.</p>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <button id="download-xlsx-btn" class="btn" disabled style="opacity: 0.5;">
+          <span>Download Excel (.xlsx)</span>
+        </button>
+        <button id="open-onlyoffice-btn" class="btn btn-secondary" disabled style="opacity: 0.5;">
+          <span>Open in ONLYOFFICE</span>
+        </button>
+        <button id="open-libreoffice-btn" class="btn btn-secondary" disabled style="opacity: 0.5;">
+          <span>Render in LibreOffice</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeBlueprint = null;
+
+    const logToConsole = (msg) => {
+      const consoleDiv = document.getElementById("console");
+      consoleDiv.textContent += "\n" + msg;
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    };
+
+    const setStepState = (stepId, state) => {
+      const el = document.getElementById(stepId);
+      el.className = "step-item " + state;
+    };
+
+    const clearSteps = () => {
+      setStepState("step-scan", "");
+      setStepState("step-translate", "");
+      setStepState("step-validate", "");
+      setStepState("step-render", "");
+    };
+
+    // Helper to map A1 notation to row/col index (0-based)
+    const a1ToCoords = (a1) => {
+      const match = a1.match(/^([A-Z]+)([0-9]+)$/);
+      if (!match) return { row: 0, col: 0 };
+      const colStr = match[1];
+      const rowStr = match[2];
+      let col = 0;
+      for (let i = 0; i < colStr.length; i++) {
+        col = col * 26 + (colStr.charCodeAt(i) - 64);
+      }
+      return { row: parseInt(rowStr) - 1, col: col - 1 };
+    };
+
+    const coordsToA1 = (row, col) => {
+      let colStr = "";
+      let temp = col + 1;
+      while (temp > 0) {
+        let rem = (temp - 1) % 26;
+        colStr = String.fromCharCode(65 + rem) + colStr;
+        temp = Math.floor((temp - 1) / 26);
+      }
+      return colStr + (row + 1);
+    };
+
+    const renderLiveGrid = (blueprint) => {
+      const container = document.getElementById("grid-preview-container");
+      container.innerHTML = ""; // Clear loader/empty state
+
+      // Determine dimensions
+      let maxRow = 10;
+      let maxCol = 6;
+
+      blueprint.cells.forEach(cell => {
+        const coords = a1ToCoords(cell.cell_id);
+        if (coords.row > maxRow) maxRow = coords.row;
+        if (coords.col > maxCol) maxCol = coords.col;
+      });
+
+      // Cap size to prevent page crash on bad/oversized generation
+      maxRow = Math.min(maxRow + 3, 40);
+      maxCol = Math.min(maxCol + 2, 15);
+
+      const table = document.createElement("table");
+      table.className = "spreadsheet-table";
+
+      // 1. Column header labels (A, B, C...)
+      const headerRow = document.createElement("tr");
+      const cornerTh = document.createElement("th");
+      cornerTh.textContent = "";
+      headerRow.appendChild(cornerTh);
+
+      for (let c = 0; c <= maxCol; c++) {
+        const th = document.createElement("th");
+        th.textContent = coordsToA1(0, c).replace(/\d+$/, "");
+        headerRow.appendChild(th);
+      }
+      table.appendChild(headerRow);
+
+      // Create a grid cell coordinate mapping
+      const cellMap = {};
+      blueprint.cells.forEach(c => {
+        cellMap[c.cell_id] = c;
+      });
+
+      // Detect merges
+      const mergedCells = new Set();
+      const mergeMap = {};
+      (blueprint.merges || []).forEach(m => {
+        const parts = m.range.split(":");
+        if (parts.length === 2) {
+          const start = a1ToCoords(parts[0]);
+          const end = a1ToCoords(parts[1]);
+          for (let r = start.row; r <= end.row; r++) {
+            for (let c = start.col; c <= end.col; c++) {
+              const addr = coordsToA1(r, c);
+              mergedCells.add(addr);
+            }
+          }
+          // The top-left cell gets rowSpan and colSpan
+          mergeMap[parts[0]] = {
+            rowSpan: end.row - start.row + 1,
+            colSpan: end.col - start.col + 1
+          };
+        }
+      });
+
+      // 2. Build rows
+      for (let r = 0; r <= maxRow; r++) {
+        const tr = document.createElement("tr");
+        
+        // Row index label (1, 2, 3...)
+        const idxTd = document.createElement("td");
+        idxTd.className = "header-index";
+        idxTd.textContent = r + 1;
+        tr.appendChild(idxTd);
+
+        for (let c = 0; c <= maxCol; c++) {
+          const addr = coordsToA1(r, c);
+          
+          // Skip if this cell is merged into another
+          if (mergedCells.has(addr) && !mergeMap[addr]) {
+            continue;
+          }
+
+          const td = document.createElement("td");
+          td.id = "grid-cell-" + addr;
+
+          // Apply rowSpan/colSpan if merged anchor
+          if (mergeMap[addr]) {
+            td.rowSpan = mergeMap[addr].rowSpan;
+            td.colSpan = mergeMap[addr].colSpan;
+          }
+
+          // Populate cell data
+          const cellData = cellMap[addr];
+          if (cellData) {
+            if (cellData.formula) {
+              td.textContent = cellData.formula;
+              td.classList.add("cell-formula-indicator");
+              td.title = "Formula: " + cellData.formula;
+            } else if (cellData.value !== null && cellData.value !== undefined) {
+              td.textContent = cellData.value;
+            }
+
+            if (cellData.validation) {
+              td.classList.add("cell-validation-indicator");
+              td.title = "Validation: " + (cellData.validation.error_message || cellData.validation.type);
+            }
+
+            // Apply style overrides if present
+            if (cellData.style) {
+              const st = cellData.style;
+              if (st.bg_color) td.style.backgroundColor = st.bg_color;
+              if (st.font_color) td.style.color = st.font_color;
+              if (st.bold) td.style.fontWeight = "bold";
+              if (st.italic) td.style.fontStyle = "italic";
+              if (st.font_size) td.style.fontSize = st.font_size + "px";
+              if (st.h_align) td.style.textAlign = st.h_align;
+              if (st.v_align) td.style.verticalAlign = st.v_align;
+            }
+          }
+
+          tr.appendChild(td);
+        }
+        table.appendChild(tr);
+      }
+
+      container.appendChild(table);
+    };
+
+    document.getElementById("generate-btn").addEventListener("click", async () => {
+      const prompt = document.getElementById("prompt-input").value.trim();
+      const provider = document.getElementById("provider-select").value;
+      const palette = document.getElementById("palette-select").value;
+      const font = "modern";
+      const stylePreset = document.getElementById("style-select").value;
+      const emojiEnabled = document.getElementById("emoji-check").checked;
+      
+      const errorBox = document.getElementById("error-message");
+      errorBox.style.display = "none";
+
+      if (!prompt) {
+        errorBox.textContent = "Please enter an application description first.";
+        errorBox.style.display = "block";
+        return;
+      }
+
+      clearSteps();
+      logToConsole("--- Generating application ---");
+      setStepState("step-scan", "active");
+
+      try {
+        // Step 1: Scan
+        logToConsole("Scanning browser session workbook...");
+        // (Pre-fill layout parameters as contextual prompt decorations)
+        const customPrompt = `${prompt} [Style Preferences: palette=${palette}, font=${font}, style_preset=${stylePreset}, emoji_enabled=${emojiEnabled}]`;
+        
+        await new Promise(r => setTimeout(r, 800));
+        setStepState("step-scan", "completed");
+        setStepState("step-translate", "active");
+
+        // Step 2: Translate via FastAPI Build
+        logToConsole("Sending prompt details to AI Translation Server...");
+        const buildResp = await fetch("/api/build", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: customPrompt,
+            provider: provider
+          })
+        });
+
+        if (!buildResp.ok) {
+          const err = await buildResp.json().catch(() => ({}));
+          throw new Error(err.detail || "Server communication failed.");
+        }
+
+        setStepState("step-translate", "completed");
+        setStepState("step-validate", "active");
+
+        const data = await buildResp.json();
+        
+        // Step 3: Validate
+        logToConsole("Validating JSON Blueprint constraints...");
+        await new Promise(r => setTimeout(r, 600));
+        setStepState("step-validate", "completed");
+        setStepState("step-render", "active");
+
+        // Step 4: Compile/Render preview
+        logToConsole("Parsing blueprint and drawing live grid preview...");
+        activeBlueprint = data.blueprint;
+        renderLiveGrid(activeBlueprint);
+        
+        setStepState("step-render", "completed");
+        logToConsole("Success! Click any action button to open the spreadsheet.");
+
+        // Enable action buttons
+        const dlBtn = document.getElementById("download-xlsx-btn");
+        dlBtn.disabled = false;
+        dlBtn.style.opacity = "1";
+
+        const ooBtn = document.getElementById("open-onlyoffice-btn");
+        ooBtn.disabled = false;
+        ooBtn.style.opacity = "1";
+
+        const loBtn = document.getElementById("open-libreoffice-btn");
+        loBtn.disabled = false;
+        loBtn.style.opacity = "1";
+
+      } catch (err) {
+        console.error(err);
+        errorBox.textContent = err.message;
+        errorBox.style.display = "block";
+        logToConsole("Error: " + err.message);
+        clearSteps();
+      }
+    });
+
+    // Action download XLSX
+    document.getElementById("download-xlsx-btn").addEventListener("click", async () => {
+      if (!activeBlueprint) return;
+      try {
+        logToConsole("Rendering Excel workbook...");
+        const resp = await fetch("/api/render/xlsx", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ blueprint: activeBlueprint })
+        });
+        if (!resp.ok) throw new Error("Could not download generated file.");
+        
+        const blob = await resp.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = (activeBlueprint.meta.title || "spreadsheet") + ".xlsx";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        logToConsole("Workbook downloaded successfully.");
+      } catch (e) {
+        logToConsole("Error downloading: " + e.message);
+      }
+    });
+
+    // Action launch ONLYOFFICE
+    document.getElementById("open-onlyoffice-btn").addEventListener("click", async () => {
+      if (!activeBlueprint) return;
+      try {
+        logToConsole("Opening workbook in ONLYOFFICE...");
+        const resp = await fetch("/api/render/onlyoffice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ blueprint: activeBlueprint })
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+          logToConsole(res.message);
+        } else {
+          throw new Error(res.detail || "Launch failed");
+        }
+      } catch (e) {
+        logToConsole("Error launching ONLYOFFICE: " + e.message);
+      }
+    });
+
+    // Action launch LibreOffice
+    document.getElementById("open-libreoffice-btn").addEventListener("click", async () => {
+      if (!activeBlueprint) return;
+      try {
+        logToConsole("Rendering to LibreOffice Calc...");
+        const resp = await fetch("/api/render/uno", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ blueprint: activeBlueprint })
+        });
+        const res = await resp.json();
+        if (resp.ok) {
+          logToConsole(res.message);
+        } else {
+          throw new Error(res.detail || "Rendering failed");
+        }
+      } catch (e) {
+        logToConsole("Error rendering to LibreOffice: " + e.message);
+      }
+    });
+  </script>
+</body>
+</html>

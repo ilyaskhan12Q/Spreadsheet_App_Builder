@@ -17,12 +17,16 @@ SAB is an open-source engine that translates natural-language prompts into struc
 
 If you want the shortest path to prove the project works end to end:
 
-1. Copy `/.env.example` to `.env` and set `SAB_AI_PROVIDER` plus the matching API key.
-2. Run `PYTHONPATH=. python cli/sab.py build "Create a simple invoice with subtotal" --validate-only`.
-3. Start LibreOffice Calc in listening mode with `libreoffice --calc --nologo --nodefault --accept="socket,host=localhost,port=2002;urp;StarOffice.ComponentContext"`.
-4. Run `PYTHONPATH=venv/lib/python3.13/site-packages:. python3 cli/sab.py build "Create a simple invoice with subtotal" --provider gemini --adapter uno`.
-5. If Gemini is rate-limited, use the direct LibreOffice smoke test in the live render section below.
-6. For the full command list, see [TESTING.md](TESTING.md).
+1. Install the package in editable mode: `pip install -e .`
+2. Copy `/.env.example` to `.env` and set `SAB_AI_PROVIDER` plus the matching API key.
+3. Run `sab build "Create a simple invoice with subtotal" --validate-only`.
+4. Generate a real Excel workbook:
+   ```bash
+   sab build "Create a simple invoice with subtotal" --provider gemini --adapter xlsx --output invoice.xlsx
+   ```
+5. Open `invoice.xlsx` in Microsoft Excel or ONLYOFFICE Desktop Editors!
+6. If Gemini is rate-limited, use the direct LibreOffice smoke test in the live render section below.
+7. For the full command list, see [TESTING.md](TESTING.md).
 
 ---
 
@@ -124,11 +128,11 @@ spreadsheet-app-builder/
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/<your-org>/spreadsheet-app-builder.git
+git clone https://github.com/ilyaskhan12Q/Spreadsheet_App_Builder.git
 cd spreadsheet-app-builder
 
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+python3 -m venv venv && source venv/bin/activate
+pip install -e .
 # Only needed if you plan to use Gemini
 pip install google-genai
 ```
@@ -149,10 +153,10 @@ export SAB_GEMINI_API_KEY="AIza…"
 
 ```bash
 # Validate-only mode (outputs blueprint JSON, no rendering)
-PYTHONPATH=. python cli/sab.py build "Create a simple invoice with subtotal" --validate-only
+sab build "Create a simple invoice with subtotal" --validate-only
 
 # Use Gemini instead of Claude
-PYTHONPATH=. python cli/sab.py build "Create a simple invoice with subtotal" --provider gemini --validate-only
+sab build "Create a simple invoice with subtotal" --provider gemini --validate-only
 ```
 
 ### 4. Live LibreOffice render
