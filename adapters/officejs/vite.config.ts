@@ -9,6 +9,13 @@ export default defineConfig({
       "Access-Control-Allow-Origin": "*",
     }
   },
+  build: {
+    rollupOptions: {
+      input: {
+        taskpane: 'taskpane.html'
+      }
+    }
+  },
   test: {
     globals: true,
     environment: 'node',

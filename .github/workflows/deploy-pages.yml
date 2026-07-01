@@ -38,6 +38,8 @@ jobs:
           cp cli/static/index.html public/index.html
           # Copy the officejs build output to public/taskpane
           cp -r adapters/officejs/dist public/taskpane
+          # Also copy taskpane.html to index.html for cleaner urls
+          cp public/taskpane/taskpane.html public/taskpane/index.html
 
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
