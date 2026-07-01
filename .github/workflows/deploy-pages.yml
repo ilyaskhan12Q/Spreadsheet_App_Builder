@@ -5,19 +5,10 @@ on:
     branches: [ main, master ]
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
+  contents: write
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -41,19 +32,16 @@ jobs:
       - name: Prepare Pages Directory
         run: |
           mkdir -p public
+          # Create .nojekyll file to bypass Jekyll processing
+          touch public/.nojekyll
           # Copy the dashboard index.html as the root index.html
           cp cli/static/index.html public/index.html
           # Copy the officejs build output to public/taskpane
           cp -r adapters/officejs/dist public/taskpane
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: './public'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
